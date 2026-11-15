@@ -47,44 +47,17 @@ test.describe('Banter Feed: Back Button, Exit Prompt, Consolidated Reactions & S
     expect(page.url()).toContain('#/scores');
   });
 
-  test('2. Consolidated emoji reaction button opens array of icons [🔥, 🤡, 💀] and reacts cleanly', async ({ page }) => {
+  test('2. Views impressions render in place of emojis with non-zero engagement', async ({ page }) => {
     // Locate the first banter post card
     const postCard = page.locator('article').first();
     await expect(postCard).toBeVisible();
 
-    // The reaction emoji trigger button
-    const reactionTrigger = postCard.locator('[data-testid="emoji-reaction-trigger"]');
-    await expect(reactionTrigger).toBeVisible();
-    await reactionTrigger.scrollIntoViewIfNeeded();
-
-    // Clicking emoji trigger opens the reaction array popover
-    await reactionTrigger.dispatchEvent('click');
-
-    const reactionArray = postCard.locator('[data-testid="reaction-emoji-array"]');
-    await expect(reactionArray).toBeVisible();
-
-    const fireBtn = postCard.locator('[data-testid="react-fire-btn"]');
-    const clownBtn = postCard.locator('[data-testid="react-clown-btn"]');
-    const skullBtn = postCard.locator('[data-testid="react-skull-btn"]');
-
-    await expect(fireBtn).toBeVisible();
-    await expect(clownBtn).toBeVisible();
-    await expect(skullBtn).toBeVisible();
-
-    // React with Fire 🔥
-    await fireBtn.dispatchEvent('click');
-
-    // Popover array should close upon selection
-    await expect(reactionArray).not.toBeVisible();
-
-    // Trigger button now reflects active reaction state
-    await expect(reactionTrigger).toHaveText(/🔥/);
-
-    // Re-open array to verify counts and switch reaction
-    await reactionTrigger.dispatchEvent('click');
-    await expect(reactionArray).toBeVisible();
-    await clownBtn.dispatchEvent('click');
-    await expect(reactionArray).not.toBeVisible();
+    // The impressions view element in place of emojis
+    const impressionsElem = postCard.locator('[data-testid="message-impressions"]');
+    await expect(impressionsElem).toBeVisible();
+    const impressionsText = await impressionsElem.textContent();
+    expect(impressionsText).toBeTruthy();
+    expect(impressionsText?.trim()).not.toBe('0');
   });
 
   test('3. Share button renders clickable and shareable card image without timeout, and link opens message thread', async ({ page }) => {

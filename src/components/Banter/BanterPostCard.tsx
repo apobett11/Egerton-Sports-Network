@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   MessageCircle,
   Repeat2,
@@ -7,8 +7,7 @@ import {
   Bookmark,
   Film,
   Shield,
-  Flame,
-  Smile
+  Flame
 } from 'lucide-react';
 import { formatRelativeTime, formatTeamTag, getCleanMessageRef, MENTION_AND_TAG_REGEX } from '../../lib/predictions/utils';
 import { shareBanterSnapshot } from '../../lib/shareSnapshot';
@@ -42,6 +41,62 @@ function formatTwitterMetric(num: number): string {
 
 const MAX_VIEW_CHARS = 160;
 
+function computePostEngagement(post: BanterPost) {
+  const isMessage = Boolean(post.parentId || (post.rootId && post.rootId !== post.id));
+  const isTrending = Boolean(post.isTrending && !isMessage);
+
+  // Deterministic seed from post id
+  let hash = 0;
+  const idStr = String(post.id || 'seed');
+  for (let i = 0; i < idStr.length; i++) {
+    hash = (hash << 5) - hash + idStr.charCodeAt(i);
+    hash |= 0;
+  }
+  const seed = Math.abs(hash);
+
+  // Age calculation
+  const createdTs = new Date(post.createdAt || Date.now()).getTime();
+  const ageSec = Math.max(0, (Date.now() - createdTs) / 1000);
+
+  // When one immediately sends, repost, impression, replies all begin at 0, then impressions & reposts climb
+  const isImmediatelySent = post.isMine && ageSec < 60;
+
+  let impressions: number;
+  let baseReposts: number;
+
+  if (isImmediatelySent) {
+    if (ageSec < 5) {
+      impressions = 0;
+      baseReposts = 0;
+    } else {
+      // Climb progressively with age
+      impressions = Math.min(80, Math.floor(ageSec * 1.5));
+      baseReposts = Math.floor(impressions / 60);
+    }
+  } else {
+    // Numbers should never be zero: immediately add community engagement
+    if (isTrending) {
+      impressions = 1550 + (seed % 1450); // 1,550 - 3,000 views
+      // Random high reposts, directly proportional to impressions
+      baseReposts = Math.max(16, Math.floor(impressions / 50) + (seed % 18));
+    } else {
+      impressions = 320 + (seed % 680); // 320 - 1,000 views (never zero!)
+      // Low (0, 1, or 2) for normal messages, directly proportional
+      baseReposts = seed % 3;
+    }
+  }
+
+  // Preserve higher persisted values if present
+  if (post.impressions && post.impressions > impressions) {
+    impressions = post.impressions;
+  }
+
+  // Replies are strictly organic - the algorithm NEVER touches replies
+  const replies = post.commentCount || post.repliesCount || 0;
+
+  return { impressions, baseReposts, replies };
+}
+
 export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   post,
   isHot = false,
@@ -63,65 +118,19 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
-  const [replyCount, setReplyCount] = useState(post.commentCount || post.repliesCount || 0);
-  React.useEffect(() => {
-    setReplyCount(post.commentCount || post.repliesCount || 0);
-  }, [post.commentCount, post.repliesCount]);
-  const [expanded, setExpanded] = useState(false);
+
+  // Engagement algorithm: replies are strictly organic, impressions & reposts climb / non-zero
+  const engagement = useMemo(() => computePostEngagement(post), [post]);
+  const impressions = engagement.impressions;
   const [repostCount, setRepostCount] = useState(
-    post.repostCount || post.repostsCount || Math.floor((post.reactionFireCount + 5) * 1.4)
+    post.repostCount || post.repostsCount || engagement.baseReposts
   );
   const [hasReposted, setHasReposted] = useState(false);
-  const [isLiked, setIsLiked] = useState(Boolean(post.userReactions?.fire));
-  const [likesCount, setLikesCount] = useState(
-    post.likesCount || post.reactionFireCount || 0
-  );
+  const [replyCount, setReplyCount] = useState(engagement.replies);
 
-  const isMessage = Boolean(post.parentId || (post.rootId && post.rootId !== post.id));
-  const isTrending = Boolean(post.isTrending && !isMessage);
-  let baseImp = post.impressions ?? post.impressionsCount;
-  if (!baseImp) {
-    if (isTrending) {
-      baseImp = 1500 + Math.min(440, 220 + ((post.reactionFireCount || 0) * 2));
-    } else {
-      baseImp = Math.min(1500, Math.max(500, 500 + ((post.reactionFireCount || 0) * 8) + ((post.commentCount || 0) * 12)));
-    }
-  } else if (isTrending) {
-    baseImp = Math.min(1940, Math.max(1501, baseImp > 1500 ? baseImp : 1500 + (baseImp % 440)));
-  } else {
-    if (baseImp > 1500) {
-      baseImp = Math.min(1500, Math.max(500, 500 + (baseImp % 1000)));
-    } else if (baseImp < 500 && (baseImp < 18 || baseImp > 45)) {
-      baseImp = Math.min(1500, Math.max(500, 500 + (baseImp % 500)));
-    }
-  }
-  const impressions = baseImp;
+  const [expanded, setExpanded] = useState(false);
 
   const cleanHandle = post.authorHandle.toLowerCase().replace(/[^a-z0-9]/g, '_');
-
-  const [reactions, setReactions] = useState({
-    fire: post.reactionFireCount || 0,
-    clown: post.reactionClownCount || 0,
-    skull: post.reactionSkullCount || 0,
-  });
-  const [userReactions, setUserReactions] = useState({
-    fire: Boolean(post.userReactions?.fire),
-    clown: Boolean(post.userReactions?.clown),
-    skull: Boolean(post.userReactions?.skull),
-  });
-  const [isReactionMenuOpen, setIsReactionMenuOpen] = useState(false);
-  const reactionPickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isReactionMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (reactionPickerRef.current && !reactionPickerRef.current.contains(e.target as Node)) {
-        setIsReactionMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isReactionMenuOpen]);
 
   const handlePostClick = (e?: React.MouseEvent) => {
     if (lightboxImageUrl !== null) return;
@@ -151,8 +160,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         target.closest('[data-testid="poll-inline-reply-container"]') ||
         target.closest('[data-action-buttons]') ||
         target.closest('[data-testid="action-buttons-bar"]') ||
-        target.closest('[data-testid="emoji-reaction-trigger"]') ||
-        target.closest('[data-testid="reaction-emoji-array"]')
+        target.closest('[data-testid="message-impressions"]')
       ) {
         return;
       }
@@ -175,25 +183,6 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     if (onRepost) {
       Promise.resolve().then(() => onRepost(post.id, next)).catch(console.warn);
     }
-  };
-
-  const handleBanterReaction = (e: React.MouseEvent, type: ReactionType) => {
-    e.stopPropagation();
-    const active = !userReactions[type];
-    setUserReactions((prev) => ({ ...prev, [type]: active }));
-    setReactions((prev) => ({
-      ...prev,
-      [type]: Math.max(0, prev[type] + (active ? 1 : -1)),
-    }));
-    if (type === 'fire') {
-      setIsLiked(active);
-      setLikesCount((prev) => Math.max(0, prev + (active ? 1 : -1)));
-    }
-    Promise.resolve().then(() => onToggleReaction(post.id, type)).catch(console.warn);
-  };
-
-  const handleLikeClick = (e: React.MouseEvent) => {
-    handleBanterReaction(e, 'fire');
   };
 
   const handleShareTake = (e: React.MouseEvent) => {
@@ -479,7 +468,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               <span className="font-medium text-xs font-mono">💬 {replyCount}</span>
             </button>
 
-            {/* 2. Repost */}
+            {/* 2. Repost - Organic, directly proportional to impressions */}
             <button
               type="button"
               onClick={handleRepost}
@@ -489,136 +478,21 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               title="Repost"
             >
               <Repeat2 className="h-4 w-4 group-hover/repost:text-[#00ba7c]" />
-              <span className="font-medium text-xs">{repostCount}</span>
+              <span className="font-medium text-xs font-mono">{repostCount}</span>
             </button>
 
-            {/* 3. Consolidated Emoji Reaction Picker */}
-            {(() => {
-              const activeUserReactionType: ReactionType | null =
-                userReactions.fire ? 'fire' : userReactions.clown ? 'clown' : userReactions.skull ? 'skull' : null;
-              const totalReactions = (reactions.fire || 0) + (reactions.clown || 0) + (reactions.skull || 0);
-
-              return (
-                <div
-                  ref={reactionPickerRef}
-                  className="relative"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log('[BanterPostCard] reactionTrigger clicked! Current isReactionMenuOpen:', isReactionMenuOpen);
-                      setIsReactionMenuOpen((prev) => !prev);
-                    }}
-                    className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer group ${
-                      activeUserReactionType === 'fire'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
-                        : activeUserReactionType === 'clown'
-                        ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 shadow-xs'
-                        : activeUserReactionType === 'skull'
-                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-xs'
-                        : 'hover:bg-zinc-800 text-zinc-400 hover:text-amber-400'
-                    }`}
-                    title="React"
-                    aria-label="React"
-                    data-testid="emoji-reaction-trigger"
-                  >
-                    {activeUserReactionType === 'fire' ? (
-                      <span className="text-xs">🔥</span>
-                    ) : activeUserReactionType === 'clown' ? (
-                      <span className="text-xs">🤡</span>
-                    ) : activeUserReactionType === 'skull' ? (
-                      <span className="text-xs">💀</span>
-                    ) : (
-                      <Smile className="h-3.5 w-3.5 text-zinc-400 group-hover:text-amber-400" />
-                    )}
-                    <span className="text-[11px] font-mono">
-                      {totalReactions > 0 ? totalReactions : ''}
-                    </span>
-                  </button>
-
-                  {/* Reaction Popover Array */}
-                  {isReactionMenuOpen && (
-                    <div
-                      role="toolbar"
-                      aria-label="Reaction options"
-                      data-testid="reaction-emoji-array"
-                      className="absolute bottom-full mb-1.5 left-0 z-40 flex items-center gap-1.5 p-1.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-700/80 rounded-full shadow-2xl animate-in fade-in zoom-in-95"
-                    >
-                      <button
-                        type="button"
-                        data-testid="react-fire-btn"
-                        aria-label="Fire reaction"
-                        title="Fire Take 🔥"
-                        onClick={(e) => {
-                          handleBanterReaction(e, 'fire');
-                          setIsReactionMenuOpen(false);
-                        }}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          userReactions.fire
-                            ? 'bg-amber-500/30 text-amber-300 ring-1 ring-amber-400 scale-105'
-                            : 'hover:bg-amber-500/15 text-zinc-300 hover:text-amber-300 hover:scale-110'
-                        }`}
-                      >
-                        <span className="text-sm">🔥</span>
-                        <span className="text-[10px] font-mono">{reactions.fire}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        data-testid="react-clown-btn"
-                        aria-label="Clown reaction"
-                        title="Clown / Delusional 🤡"
-                        onClick={(e) => {
-                          handleBanterReaction(e, 'clown');
-                          setIsReactionMenuOpen(false);
-                        }}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          userReactions.clown
-                            ? 'bg-yellow-500/30 text-yellow-300 ring-1 ring-yellow-400 scale-105'
-                            : 'hover:bg-yellow-500/15 text-zinc-300 hover:text-yellow-300 hover:scale-110'
-                        }`}
-                      >
-                        <span className="text-sm">🤡</span>
-                        <span className="text-[10px] font-mono">{reactions.clown}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        data-testid="react-skull-btn"
-                        aria-label="Skull reaction"
-                        title="Savage Take 💀"
-                        onClick={(e) => {
-                          handleBanterReaction(e, 'skull');
-                          setIsReactionMenuOpen(false);
-                        }}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          userReactions.skull
-                            ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-400 scale-105'
-                            : 'hover:bg-purple-500/15 text-zinc-300 hover:text-purple-300 hover:scale-110'
-                        }`}
-                      >
-                        <span className="text-sm">💀</span>
-                        <span className="text-[10px] font-mono">{reactions.skull}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* 6. Impressions */}
+            {/* 3. Impressions (number of views per message in place of emojis) */}
             <div
+              data-testid="message-impressions"
               onClick={(e) => e.stopPropagation()}
-              className="hidden xs:flex items-center gap-1 text-zinc-500 cursor-default select-none"
-              title="Views"
+              className="flex items-center gap-1.5 p-1.5 rounded-full hover:bg-sky-500/10 text-zinc-500 hover:text-sky-400 transition-colors cursor-default select-none"
+              title={`${impressions.toLocaleString()} views`}
             >
-              <BarChart2 className="h-3.5 w-3.5" />
-              <span className="text-[11px] font-mono">{formatTwitterMetric(impressions)}</span>
+              <BarChart2 className="h-4 w-4" />
+              <span className="font-medium text-xs font-mono">{formatTwitterMetric(impressions)}</span>
             </div>
 
-            {/* 7. Bookmark & Share */}
+            {/* 4. Bookmark & Share */}
             <div className="flex items-center gap-0.5">
               <button
                 type="button"

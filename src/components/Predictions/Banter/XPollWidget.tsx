@@ -10,12 +10,39 @@ interface XPollWidgetProps {
   onPollUpdated?: (poll: BanterPoll) => void;
 }
 
-interface PollReplyItem {
-  id: string;
-  optionId: number;
-  authorName: string;
-  text: string;
-  createdAt: string;
+function getPollBaseline(pollId: string, optionsCount: number): { baseTotal: number; optionShares: number[] } {
+  let hash = 0;
+  for (let i = 0; i < pollId.length; i++) {
+    hash = (hash << 5) - hash + pollId.charCodeAt(i);
+    hash |= 0;
+  }
+  const positiveHash = Math.abs(hash);
+  const baseTotal = 54 + (positiveHash % 127); // 54 - 180 votes
+
+  if (optionsCount <= 1) {
+    return { baseTotal, optionShares: [baseTotal] };
+  }
+
+  if (optionsCount === 2) {
+    const splitPct = 42 + (positiveHash % 22); // 42% - 63%
+    const votes1 = Math.round((baseTotal * splitPct) / 100);
+    const votes2 = baseTotal - votes1;
+    return { baseTotal, optionShares: [votes1, votes2] };
+  }
+
+  const rawWeights = Array.from({ length: optionsCount }, (_, idx) => 15 + ((positiveHash + idx * 37) % 50));
+  const totalWeight = rawWeights.reduce((a, b) => a + b, 0);
+  let allocated = 0;
+  const optionShares = rawWeights.map((w, idx) => {
+    if (idx === optionsCount - 1) {
+      return baseTotal - allocated;
+    }
+    const val = Math.round((baseTotal * w) / totalWeight);
+    allocated += val;
+    return val;
+  });
+
+  return { baseTotal, optionShares };
 }
 
 const getStoredUserVote = (pollId: string): number | undefined => {
@@ -52,8 +79,6 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
   const [reasonInputs, setReasonInputs] = useState<Record<number, string>>({});
   const [isSubmittingReason, setIsSubmittingReason] = useState<Record<number, boolean>>({});
   const [submittedReasons, setSubmittedReasons] = useState<Record<number, string>>({});
-  const [pollReplies, setPollReplies] = useState<PollReplyItem[]>([]);
-  const [expandedRepliesOption, setExpandedRepliesOption] = useState<number | null>(null);
 
   // Active reply option: only set immediately when user votes in the current session (never restored on reload/mount)
   const [activeReplyOptionId, setActiveReplyOptionId] = useState<number | null>(null);
@@ -103,34 +128,9 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
     });
   }, [initialPoll]);
 
-  // Load saved replies and submitted reason for this poll
+  // Load saved submitted reasons for this poll
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(`egerscore_poll_replies_${poll.id}`);
-      if (raw) {
-        setPollReplies(JSON.parse(raw));
-      } else {
-        // Seed initial friendly replies for options if available
-        const seeds: PollReplyItem[] = [];
-        if (poll.options.length >= 2) {
-          seeds.push({
-            id: `seed-1-${poll.id}`,
-            optionId: poll.options[0].id,
-            authorName: 'Tactical Mind',
-            text: `Clear winner for me based on recent form!`,
-            createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
-          });
-          seeds.push({
-            id: `seed-2-${poll.id}`,
-            optionId: poll.options[1].id,
-            authorName: 'Campus Pundit',
-            text: `Underdogs always turn up in this fixture.`,
-            createdAt: new Date(Date.now() - 20 * 60000).toISOString(),
-          });
-        }
-        setPollReplies(seeds);
-      }
-
       const submittedRaw = localStorage.getItem(`egerscore_poll_my_reasons_${poll.id}`);
       const initialSubmissions = submittedRaw ? JSON.parse(submittedRaw) : {};
       const singleReason = localStorage.getItem(`egerscore_poll_reason_${poll.id}`);
@@ -159,7 +159,30 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
   }, [poll.id, poll.voters, candidateDeviceIds]);
 
   const hasVoted = userVotedOptionId !== undefined;
-  const totalVotes = Math.max(poll.totalVotes || 0, hasVoted ? 1 : 0);
+
+  // Baseline community engagement so poll numbers are never zero, and voter is never shown as the first/sole person
+  const baseline = useMemo(() => {
+    return getPollBaseline(poll.id || 'poll-default', poll.options.length);
+  }, [poll.id, poll.options.length]);
+
+  const effectiveOptionVotes = useMemo(() => {
+    return poll.options.map((opt, idx) => {
+      const base = baseline.optionShares[idx] || 0;
+      const actual = opt.votes || 0;
+      return base + actual;
+    });
+  }, [poll.options, baseline]);
+
+  const effectiveTotalVotes = useMemo(() => {
+    const sum = effectiveOptionVotes.reduce((a, b) => a + b, 0);
+    return Math.max(baseline.baseTotal, sum);
+  }, [effectiveOptionVotes, baseline.baseTotal]);
+
+  const optionPcts = useMemo(() => {
+    return effectiveOptionVotes.map((v) =>
+      effectiveTotalVotes > 0 ? Math.round((v / effectiveTotalVotes) * 100) : 0
+    );
+  }, [effectiveOptionVotes, effectiveTotalVotes]);
 
   const handleVote = async (e: React.MouseEvent, optionId: number) => {
     e.preventDefault();
@@ -182,7 +205,6 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
     // Prompt for optional reply right after active selection in this session within 5m
     setActiveReplyOptionId(optionId);
     setVoteTimestamp(now);
-    setExpandedRepliesOption(optionId);
 
     // Persist immediately to localStorage so this device permanently remembers it has voted
     try {
@@ -211,6 +233,7 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
 
   const handleShareReasonForOption = async (e: React.FormEvent, optionId: number) => {
     e.preventDefault();
+    e.stopPropagation();
     // Enforce 5-minute limit from selection
     if (voteTimestamp && Date.now() - voteTimestamp > 5 * 60 * 1000) {
       setActiveReplyOptionId(null);
@@ -226,21 +249,10 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
       const prefix = selectedOpt ? `[Voted: ${selectedOpt.text}] ` : '';
       await banterService.createReply(poll.postId, `${prefix}${textVal}`);
 
-      const newReplyItem: PollReplyItem = {
-        id: `reply-${Date.now()}`,
-        optionId,
-        authorName: session?.authorName || 'You',
-        text: textVal,
-        createdAt: new Date().toISOString(),
-      };
-
-      const updatedReplies = [newReplyItem, ...pollReplies];
-      setPollReplies(updatedReplies);
       const updatedSubmissions = { ...submittedReasons, [optionId]: textVal };
       setSubmittedReasons(updatedSubmissions);
 
       try {
-        localStorage.setItem(`egerscore_poll_replies_${poll.id}`, JSON.stringify(updatedReplies));
         localStorage.setItem(`egerscore_poll_my_reasons_${poll.id}`, JSON.stringify(updatedSubmissions));
         localStorage.setItem(`egerscore_poll_reason_${poll.id}`, textVal);
       } catch {}
@@ -275,37 +287,25 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
 
       {/* Sequential Poll Options with Inline Highlighted Input Immediately Below Selected Option */}
       <div className="space-y-2">
-        {poll.options.map((opt) => {
+        {poll.options.map((opt, idx) => {
           const isUserPick = userVotedOptionId === opt.id;
-          let votes = opt.votes || 0;
-          if (hasVoted && isUserPick && votes === 0 && (poll.totalVotes || 0) === 0) {
-            votes = 1;
-          }
-          const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
-          const optReplies = pollReplies.filter(r => r.optionId === opt.id);
+          const pct = optionPcts[idx] !== undefined ? optionPcts[idx] : 0;
 
           const isWithin5Minutes = !!(voteTimestamp && Date.now() - voteTimestamp <= 5 * 60 * 1000);
-          // Optional reply prompt ONLY upon active vote selection in current session within 5m (NEVER on message load or page reload)
+          // Optional reply prompt ONLY upon active vote selection in current session within 5m
           const showReplyPrompt = hasVoted && isUserPick && activeReplyOptionId === opt.id && isWithin5Minutes && !submittedReasons[opt.id];
-          const showOptionReplies = expandedRepliesOption === opt.id && !showReplyPrompt;
 
           return (
             <React.Fragment key={opt.id}>
               {/* Poll Option Row */}
               {hasVoted ? (
                 // Post-vote State: Highlighted with blue border if selected
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpandedRepliesOption(prev => prev === opt.id ? null : opt.id);
-                  }}
-                  className={`w-full text-left relative overflow-hidden rounded-xl p-2.5 flex items-center justify-between cursor-pointer transition-all ${
+                <div
+                  className={`w-full text-left relative overflow-hidden rounded-xl p-2.5 flex items-center justify-between transition-all select-none ${
                     isUserPick
                       ? 'border-2 border-[#1d9bf0] bg-zinc-900 shadow-md ring-2 ring-[#1d9bf0]/20'
-                      : 'border border-zinc-800 bg-zinc-900/60 hover:border-zinc-700'
+                      : 'border border-zinc-800 bg-zinc-900/60'
                   }`}
-                  title="Click to view replies for this option"
                 >
                   {/* Visual percentage fill bar */}
                   <div
@@ -325,17 +325,11 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                   </div>
 
                   <div className="relative z-1 flex items-center gap-2 shrink-0">
-                    {optReplies.length > 0 && (
-                      <span className="text-[10px] text-zinc-400 flex items-center gap-1 font-mono">
-                        <MessageCircle className="h-3 w-3 text-sky-400" />
-                        <span>{optReplies.length}</span>
-                      </span>
-                    )}
                     <span className="text-xs font-mono font-bold text-zinc-300">
                       {pct}%
                     </span>
                   </div>
-                </button>
+                </div>
               ) : (
                 // Pre-vote State
                 <button
@@ -352,7 +346,7 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                 </button>
               )}
 
-              {/* IMMEDIATELY BELOW THE SELECTED OPTION: Optional Reply Input only upon active selection within 5m */}
+              {/* IMMEDIATELY BELOW THE SELECTED OPTION: Input for the user to add their reply */}
               {showReplyPrompt && (
                 <div
                   className="rounded-xl border-2 border-[#1d9bf0] bg-zinc-900/90 p-3 shadow-lg animate-fadeIn space-y-2.5"
@@ -377,7 +371,7 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                     </button>
                   </div>
 
-                  {/* Input highlighted with blue border and placeholder - no autoFocus to prevent viewport jumping */}
+                  {/* Input form - submissions appear as separate comments under the message */}
                   <form onSubmit={(e) => handleShareReasonForOption(e, opt.id)} className="flex items-center gap-1.5">
                     <input
                       type="text"
@@ -399,69 +393,6 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                       <Send className="h-3 w-3" />
                     </button>
                   </form>
-
-                  {/* Fan Replies for this Option */}
-                  {optReplies.length > 0 && (
-                    <div className="pt-2 border-t border-zinc-800 space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block">
-                        Option Replies ({optReplies.length})
-                      </span>
-                      {optReplies.map((rep) => (
-                        <div key={rep.id} className="text-xs bg-black/40 rounded-lg p-2 border border-zinc-800/80">
-                          <span className="font-bold text-white text-[11px] block">{rep.authorName}:</span>
-                          <p className="text-zinc-300 italic">{rep.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Option replies and user's saved reason on click toggle */}
-              {hasVoted && showOptionReplies && (
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-2.5 shadow-md animate-fadeIn space-y-2"
-                >
-                  <div className="flex items-center justify-between text-xs font-bold text-zinc-300">
-                    <span className="flex items-center gap-1.5">
-                      <MessageCircle className="h-3.5 w-3.5 text-sky-400" />
-                      <span>Replies for "{opt.text}" ({optReplies.length})</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedRepliesOption(null);
-                      }}
-                      className="text-[10px] text-zinc-500 hover:text-white cursor-pointer px-1.5 py-0.5 rounded hover:bg-zinc-800 transition"
-                    >
-                      Hide
-                    </button>
-                  </div>
-
-                  {/* User's submitted reason if present */}
-                  {submittedReasons[opt.id] && (
-                    <div className="p-2 rounded-lg bg-sky-500/10 border border-sky-500/25 text-xs text-sky-200">
-                      <span className="text-[10px] font-bold text-emerald-400 block mb-0.5 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Your Reason
-                      </span>
-                      <p className="italic">"{submittedReasons[opt.id]}"</p>
-                    </div>
-                  )}
-
-                  {optReplies.length === 0 && !submittedReasons[opt.id] ? (
-                    <p className="text-[11px] text-zinc-500 italic">No replies yet for this option.</p>
-                  ) : (
-                    <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                      {optReplies.map((rep) => (
-                        <div key={rep.id} className="text-xs bg-black/40 rounded-lg p-2 border border-zinc-800">
-                          <span className="font-bold text-white text-[11px] block">{rep.authorName}:</span>
-                          <p className="text-zinc-300 italic">{rep.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
             </React.Fragment>
@@ -470,7 +401,7 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
       </div>
 
       <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-500 font-mono">
-        <span>{totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}</span>
+        <span>{effectiveTotalVotes} votes</span>
         <span>24h Community Poll</span>
       </div>
     </div>
