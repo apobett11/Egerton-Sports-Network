@@ -1,5 +1,6 @@
 import type { BanterPost } from '../types/predictions';
 import { getCleanMessageRef } from './predictions/utils';
+import { banterService } from '../services/predictions/banterService';
 
 export interface SnapshotRow {
   left: string;
@@ -451,49 +452,8 @@ function showPicture(
   const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(finalShareUrl)}`;
 
   const sendToWhatsApp = async () => {
-    // 1. Try native Web Share with file attachment (Directly sends big image to WhatsApp!)
-    if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: `EgerScore: ${title}`,
-          text: `${text}\n${displayLink}`,
-        });
-        return;
-      } catch (err: any) {
-        if (err.name === 'AbortError') return;
-      }
-    }
-
-    // 2. Clipboard image copy for instant pasting in WhatsApp Web
-    let copied = false;
-    try {
-      if (navigator.clipboard && (window as any).ClipboardItem) {
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': file })
-        ]);
-        copied = true;
-      }
-    } catch {}
-
-    // 3. Auto download the big image
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = `egerscore-banter-${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    // 4. Open WhatsApp
+    (window as any).__lastSharedTarget = 'whatsapp';
     window.open(whatsappUrl, '_blank');
-
-    const feedback = root.querySelector('[data-share-feedback]') as HTMLElement | null;
-    if (feedback) {
-      feedback.style.display = 'block';
-      feedback.textContent = copied
-        ? '✓ Big image copied & downloaded! In WhatsApp, just press Ctrl+V / Paste to send image.'
-        : '✓ Big image downloaded! Attach in WhatsApp to send the big template image.';
-    }
   };
 
   if (autoOpenWhatsapp) {
@@ -517,14 +477,12 @@ function showPicture(
         <button type="button" data-close aria-label="Close" style="background:#152a40;color:#94a3b8;border:0;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">Close</button>
       </div>
 
-      <!-- High-res Uncropped Template Image Preview (Clickable) -->
+      <!-- High-res Template Image Preview (Clickable to view image) -->
       <div style="margin:12px;background:#08121d;border:1px solid #20354b;border-radius:12px;overflow:hidden;box-shadow:0 12px 28px -4px rgba(0,0,0,0.5);">
-        <div style="position:relative;width:100%;max-height:460px;overflow-y:auto;background:#08121d;text-align:center;">
-          <a href="${finalShareUrl}" data-post-link aria-label="Open message" style="display:block;cursor:pointer;text-decoration:none;">
-            <img data-card data-testid="share-card-image" alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;max-height:460px;object-fit:contain;display:block;background:#0e1c2b;margin:0 auto;" />
-          </a>
+        <div style="position:relative;width:100%;max-height:460px;overflow-y:auto;background:#08121d;text-align:center;cursor:zoom-in;">
+          <img data-card data-testid="share-card-image" alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;max-height:460px;object-fit:contain;display:block;background:#0e1c2b;margin:0 auto;cursor:pointer;" />
           <div style="position:absolute;top:10px;right:10px;background:rgba(14,28,43,0.9);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:800;color:#ff0046;letter-spacing:0.05em;pointer-events:none;">
-            BIG TEMPLATE IMAGE
+            CLICK TO VIEW IMAGE
           </div>
         </div>
 
@@ -544,10 +502,10 @@ function showPicture(
       <!-- Share Action Section -->
       <div style="padding:14px;border-top:1px solid #1a2e45;background:#112236;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-          <!-- Primary WhatsApp Share Button (preserves image) -->
-          <button type="button" data-share-whatsapp aria-label="Share Image to WhatsApp" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#25D366;color:#ffffff;font-size:13px;font-weight:800;padding:11px 14px;border-radius:10px;cursor:pointer;border:0;box-shadow:0 3px 12px rgba(37,211,102,0.35);">
+          <!-- Primary WhatsApp Share Button (shares link & preview) -->
+          <button type="button" data-share-whatsapp aria-label="Share Link to WhatsApp" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#25D366;color:#ffffff;font-size:13px;font-weight:800;padding:11px 14px;border-radius:10px;cursor:pointer;border:0;box-shadow:0 3px 12px rgba(37,211,102,0.35);">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.842-.981z"/></svg>
-            <span>Share Image to WhatsApp</span>
+            <span>Share Link to WhatsApp</span>
           </button>
           
           <a href="${xUrl}" target="_blank" rel="noopener noreferrer" data-share-x aria-label="Share to X" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#000000;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:11px 14px;border-radius:10px;cursor:pointer;border:1px solid #334155;">
@@ -557,14 +515,11 @@ function showPicture(
         </div>
 
         <div style="display:flex;gap:8px;align-items:center;">
-          <button type="button" data-copy-image aria-label="Copy image to clipboard" style="flex:1;background:#152a40;color:#38bdf8;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-            <span>📋 Copy Image</span>
+          <button type="button" data-copy-link aria-label="Copy link" style="flex:1;background:#152a40;color:#38bdf8;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <span>🔗 Copy Link</span>
           </button>
           <button type="button" data-download-image aria-label="Download image" style="flex:1;background:#152a40;color:#f8fafc;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
             <span>⬇️ Download Image</span>
-          </button>
-          <button type="button" data-copy-link aria-label="Copy link" style="background:#152a40;color:#94a3b8;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;">
-            Copy Link
           </button>
         </div>
       </div>
@@ -576,6 +531,44 @@ function showPicture(
   };
 
   root.querySelector('[data-close]')?.addEventListener('click', close);
+
+  // Click on image shows image in full lightbox (does NOT open link)
+  const showLightbox = () => {
+    const lightbox = document.createElement('div');
+    lightbox.setAttribute('role', 'dialog');
+    lightbox.setAttribute('aria-label', 'Full Image View');
+    lightbox.setAttribute('data-testid', 'share-image-lightbox');
+    lightbox.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;cursor:zoom-out;';
+    lightbox.innerHTML = `
+      <div style="width:100%;max-width:900px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:white;">
+        <span style="font-size:12px;font-weight:bold;letter-spacing:0.05em;text-transform:uppercase;color:#38bdf8;">${escapeHtml(title)} - Full Image Preview</span>
+        <button type="button" data-close-lightbox style="background:#152a40;color:#f8fafc;border:0;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">✕ Close</button>
+      </div>
+      <div style="max-width:100%;max-height:85vh;display:flex;align-items:center;justify-content:center;cursor:default;" onclick="event.stopPropagation()">
+        <img alt="${escapeHtml(title)}" src="${objectUrl}" style="max-width:100%;max-height:85vh;object-fit:contain;border-radius:12px;box-shadow:0 25px 50px rgba(0,0,0,0.8);border:1px solid rgba(255,255,255,0.1);" />
+      </div>
+    `;
+    const closeLightbox = () => lightbox.remove();
+    lightbox.querySelector('[data-close-lightbox]')?.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', closeLightbox);
+    document.body.appendChild(lightbox);
+  };
+
+  const cardImg = root.querySelector('img[data-card]');
+  cardImg?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    showLightbox();
+  });
+  cardImg?.parentElement?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    showLightbox();
+  });
+
+  root.querySelector('[data-share-x]')?.addEventListener('click', () => {
+    (window as any).__lastSharedTarget = 'x';
+  });
 
   root.querySelectorAll('[data-post-link]').forEach((el) => {
     el.addEventListener('click', (e) => {
@@ -1086,6 +1079,12 @@ export async function shareBanterSnapshot(
   const shortLink = `egerscore.com/b/${cleanRef}`;
   const title = post.authorName || post.authorHandle || 'Fanatic';
   const snippet = post.content.length > 90 ? `"${post.content.slice(0, 90).trim()}..."` : `"${post.content}"`;
+
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem(`banter_ref_${cleanRef}`, post.id);
+    sessionStorage.setItem('active_banter_thread_id', post.id);
+  }
+  banterService.registerPostRef(post.id, cleanRef);
 
   try {
     const file = await renderBanterCardSnapshot(post, parentPost, shortLink);

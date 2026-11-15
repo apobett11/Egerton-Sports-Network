@@ -8,11 +8,17 @@ const env = (typeof import.meta !== 'undefined' && (import.meta as any).env)
   || (typeof globalThis !== 'undefined' && (globalThis as any).process?.env)
   || {};
 
-const localAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const supabaseUrl = 
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
+  env.VITE_SUPABASE_URL ||
+  config.supabaseUrl ||
+  'https://tdfiodqlzptaruhivapj.supabase.co';
 
-const supabaseUrl = isLocalhost ? 'http://127.0.0.1:54321' : (env.VITE_SUPABASE_URL || config.supabaseUrl || 'http://127.0.0.1:54321');
-const supabaseAnonKey = isLocalhost ? localAnonKey : (env.VITE_SUPABASE_ANON_KEY || config.supabaseAnonKey || localAnonKey);
+const supabaseAnonKey = 
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
+  env.VITE_SUPABASE_ANON_KEY ||
+  config.supabaseAnonKey ||
+  'sb_publishable_R8MgdxmLXhHdmcE8cwJADw_aLIplyk6';
 
 // Seamlessly migrate legacy storage keys
 migrateStorageKeys();

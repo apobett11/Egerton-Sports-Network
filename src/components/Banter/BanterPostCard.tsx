@@ -22,6 +22,7 @@ import {
   ChampionshipAmberCoachTick,
   AvatarViewModal
 } from '../../lib/predictions/footballAvatars';
+import { ImageLightboxModal } from '../common/ImageLightboxModal';
 import type { BanterPost, ReactionType } from '../../types/predictions';
 
 interface BanterPostCardProps {
@@ -55,6 +56,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const isYou = Boolean(currentDeviceId && postAuthorDeviceId === currentDeviceId);
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
   const authorMeta = getAuthorIdentityMeta(post);
 
   const isJournalist = authorMeta.isJournalist;
@@ -121,7 +123,30 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isReactionMenuOpen]);
 
-  const handlePostClick = () => {
+  const handlePostClick = (e?: React.MouseEvent) => {
+    if (lightboxImageUrl !== null) return;
+    if (e) {
+      const target = e.target as HTMLElement | null;
+      if (
+        !target ||
+        target.tagName === 'IMG' ||
+        target.tagName === 'VIDEO' ||
+        target.tagName === 'BUTTON' ||
+        target.tagName === 'A' ||
+        target.closest('button') ||
+        target.closest('a') ||
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('img') ||
+        target.closest('video') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('[title*="image"]') ||
+        target.closest('[data-interactive-media]') ||
+        target.closest('[data-testid="image-lightbox-modal"]')
+      ) {
+        return;
+      }
+    }
     // Navigate to full-page thread view (clean message ref, never internal UID)
     const messageRef = getCleanMessageRef(post);
     sessionStorage.setItem('active_banter_thread_id', post.id);
@@ -200,6 +225,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
   return (
     <article
+      data-testid="banter-post-card"
       onClick={handlePostClick}
       className={`group relative overflow-hidden px-4 py-3.5 sm:px-4 sm:py-4 transition-colors duration-150 cursor-pointer hover:bg-white/[0.02] max-w-2xl mx-auto border-b border-zinc-800/70 ${
         isHot || post.isTrending ? 'bg-amber-500/[0.02]' : ''
@@ -285,7 +311,11 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
               <span className="text-zinc-600 text-sm">·</span>
 
-              <span className="text-sm text-zinc-500 whitespace-nowrap hover:underline">
+              <span
+                data-post-link
+                onClick={handlePostClick}
+                className="text-sm text-zinc-500 whitespace-nowrap hover:underline cursor-pointer"
+              >
                 {formatRelativeTime(post.createdAt)}
               </span>
 
@@ -317,7 +347,8 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           {/* Tweet Text Content with Maximum View Limit */}
           <p
             data-testid="banter-post-content"
-            className="mt-2 text-[15px] text-zinc-100 leading-relaxed break-words whitespace-pre-wrap select-text font-normal"
+            onClick={handlePostClick}
+            className="mt-2 text-[15px] text-zinc-100 leading-relaxed break-words whitespace-pre-wrap select-text font-normal cursor-pointer"
           >
             {renderTweetContent(
               !expanded && post.content.length > MAX_VIEW_CHARS
@@ -354,22 +385,49 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                   </span>
                 </div>
               ) : mediaList.length === 1 ? (
-                <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-video max-h-72">
+                <div
+                  data-interactive-media
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxImageUrl(mediaList[0]);
+                  }}
+                  className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-video max-h-72 cursor-pointer group/img hover:border-zinc-700 transition"
+                  title="Click to view image"
+                >
                   <img
                     src={mediaList[0]}
                     alt="Banter visual"
-                    className="w-full h-full object-cover"
+                    data-interactive-media
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxImageUrl(mediaList[0]);
+                    }}
+                    className="w-full h-full object-cover group-hover/img:scale-[1.02] transition-transform duration-200"
                     loading="lazy"
                   />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-1.5 rounded-2xl overflow-hidden border border-zinc-800">
                   {mediaList.slice(0, 2).map((url: string, i: number) => (
-                    <div key={i} className="aspect-square bg-zinc-950 overflow-hidden">
+                    <div
+                      key={i}
+                      data-interactive-media
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLightboxImageUrl(url);
+                      }}
+                      className="aspect-square bg-zinc-950 overflow-hidden cursor-pointer group/img hover:border-zinc-700 transition"
+                      title="Click to view image"
+                    >
                       <img
                         src={url}
                         alt={`Banter visual ${i + 1}`}
-                        className="w-full h-full object-cover"
+                        data-interactive-media
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxImageUrl(url);
+                        }}
+                        className="w-full h-full object-cover group-hover/img:scale-[1.02] transition-transform duration-200"
                         loading="lazy"
                       />
                     </div>
@@ -401,8 +459,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               className="flex items-center gap-1.5 p-1.5 -ml-1.5 rounded-full hover:bg-[#1d9bf0]/10 transition-colors cursor-pointer group/reply text-zinc-400 hover:text-[#1d9bf0]"
               title="Reply"
             >
-              <span className="text-[14px] leading-none">💬</span>
-              <span className="font-medium text-xs font-mono">{replyCount}</span>
+              <span className="font-medium text-xs font-mono">💬 {replyCount}</span>
             </button>
 
             {/* 2. Repost */}
@@ -434,6 +491,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      console.log('[BanterPostCard] reactionTrigger clicked! Current isReactionMenuOpen:', isReactionMenuOpen);
                       setIsReactionMenuOpen((prev) => !prev);
                     }}
                     className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer group ${
@@ -584,6 +642,13 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         isCoach={authorMeta.isCoach}
         isJournalist={authorMeta.isJournalist}
         coachLeague={authorMeta.coachLeague}
+      />
+
+      <ImageLightboxModal
+        isOpen={Boolean(lightboxImageUrl)}
+        imageUrl={lightboxImageUrl}
+        altText="Full preview"
+        onClose={() => setLightboxImageUrl(null)}
       />
     </article>
   );

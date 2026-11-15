@@ -94,6 +94,42 @@ function adminApiPlugin() {
   }
 }
 
+function messagesApiPlugin() {
+  return {
+    name: 'esn-messages-api',
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use('/api/messages', (req, res) => {
+        const handle = async () => {
+          try {
+            const { default: handler } = await import('./api/messages.ts')
+            await handler(req, res)
+          } catch (err: any) {
+            res.statusCode = 500
+            res.end(JSON.stringify({ error: err?.message || 'Server error' }))
+          }
+        }
+
+        if (req.method === 'GET' || req.method === 'OPTIONS' || req.readableEnded) {
+          void handle()
+          return
+        }
+
+        const chunks: Buffer[] = []
+        req.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+        req.on('end', async () => {
+          try {
+            const rawBody = Buffer.concat(chunks).toString('utf8')
+            ;(req as any).body = rawBody ? JSON.parse(rawBody) : {}
+          } catch {
+            ;(req as any).body = {}
+          }
+          await handle()
+        })
+      })
+    },
+  }
+}
+
 function shareApiPlugin() {
   return {
     name: 'esn-share-api',
@@ -175,6 +211,7 @@ export default defineConfig({
     tailwindcss(),
     deviceCookiePlugin(),
     adminApiPlugin(),
+    messagesApiPlugin(),
     shareApiPlugin(),
     royalDevelopersPlugin(),
   ],

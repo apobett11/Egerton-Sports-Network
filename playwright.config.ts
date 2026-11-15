@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   testMatch: [
+    '**/messaging_persistence_and_media.spec.ts',
     '**/thread_hierarchy_counters.spec.ts',
     '**/realtime_scoping_isolation.spec.ts',
     '**/poll_atomic_concurrency.spec.ts',

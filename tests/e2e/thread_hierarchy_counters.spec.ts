@@ -2,12 +2,15 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Threading Hierarchy & Atomic Counters', () => {
   test('Instant optimistic paint (<16ms) and multi-level counter reconciliation', async ({ page }) => {
+    page.on('console', (msg) => console.log('BROWSER:', msg.text()));
+    page.on('pageerror', (err) => console.log('PAGE ERROR:', err));
     await page.goto('/#/banter');
 
     // 1. Post a Root Message (Level 0)
+    const postTitle = `Root Derby Match Take #${Date.now()}`;
     const composer = page.locator('textarea[placeholder*="What\'s happening"]');
     await composer.click();
-    await composer.fill('Root Derby Match Take #1');
+    await composer.fill(postTitle);
     
     const timing = await page.evaluate(async () => {
       const btn = Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Post') as HTMLButtonElement | null;
@@ -20,14 +23,22 @@ test.describe('Threading Hierarchy & Atomic Counters', () => {
     // Optimistic UI Latency: First Paint of Sent Message <= 16ms
     expect(timing.syncTime).toBeLessThan(16);
 
-    const rootPost = page.locator('article:has-text("Root Derby Match Take #1")').first();
+    const rootPost = page.locator(`article:has-text("${postTitle}")`).first();
     await expect(rootPost).toBeVisible({ timeout: 1000 });
 
     // Initial reply metric must be 0
     await expect(rootPost.locator('text=💬 0')).toBeVisible();
 
     // 2. Open Thread View (Level 1 Reply)
-    await rootPost.click();
+    const info = await rootPost.evaluate((el) => {
+      (el as HTMLElement).click();
+      return {
+        tag: el.tagName,
+        html: el.outerHTML.slice(0, 250),
+        hash: window.location.hash
+      };
+    });
+    console.log('ROOT POST CLICK INFO:', info);
     await expect(page).toHaveURL(/#\/banter\/.+/);
 
     const replyInput = page.locator('textarea[placeholder*="Post your reply"]');
@@ -55,7 +66,7 @@ test.describe('Threading Hierarchy & Atomic Counters', () => {
     await page.locator('button[aria-label="Back to feed"], a[href="#/banter"]').first().click();
 
     // Root Post card on the main feed must show 💬 2 (1 child + 1 grandchild)
-    const updatedRootCard = page.locator('article:has-text("Root Derby Match Take #1")').first();
+    const updatedRootCard = page.locator(`article:has-text("${postTitle}")`).first();
     await expect(updatedRootCard.locator('text=💬 2')).toBeVisible();
   });
 });

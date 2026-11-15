@@ -35,6 +35,7 @@ import {
   ChampionshipAmberCoachTick,
   AvatarViewModal
 } from '../../../lib/predictions/footballAvatars';
+import { ImageLightboxModal } from '../../common/ImageLightboxModal';
 import type { BanterPost, BanterMediaType, ReactionType } from '../../../types/predictions';
 
 interface BanterThreadViewProps {
@@ -76,6 +77,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
   const [likeCount, setLikeCount] = useState(0);
   const [repostCount, setRepostCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
 
   // Main Reply State
   const [singleReplyText, setSingleReplyText] = useState('');
@@ -465,46 +467,24 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
     } catch {}
 
     try {
-      const payload: Record<string, any> = {
-        root_id: post.rootId || post.id,
-        parent_id: post.id,
+      const created = await banterService.createPost({
+        content,
+        parentId: post.id,
+        rootId: post.rootId || post.id,
+        mediaUrls,
+        mediaType,
+        poll,
+        taggedTeamId: finalTeam?.id || null,
+        taggedTeamName: finalTeam?.name || null,
+        authorDeviceId: effectiveDeviceId,
         uid: effectiveUid,
-        author_device_id: effectiveDeviceId,
-        author_name: effectiveName,
-        author_handle: effectiveHandle,
-        author_avatar: effectiveAvatar,
-        content: content.trim(),
-        media_type: mediaType || 'NONE',
-      };
-      if (finalTeam?.id) {
-        payload.tagged_team_id = finalTeam.id;
-        payload.tagged_team_name = finalTeam.name;
-      }
+        authorName: effectiveName,
+        authorHandle: effectiveHandle,
+        authorAvatar: effectiveAvatar,
+      });
 
-      const { data, error } = await supabase
-        .from('banter_posts')
-        .insert([payload])
-        .select()
-        .single();
-
-      if (!error && data) {
-        setReplies(prev => prev.map(r => r.id === optimisticId ? { ...optimisticItem, id: data.id } : r));
-      } else {
-        await banterService.createPost({
-          content,
-          parentId: post.id,
-          rootId: post.rootId || post.id,
-          mediaUrls,
-          mediaType,
-          poll,
-          taggedTeamId: finalTeam?.id || null,
-          taggedTeamName: finalTeam?.name || null,
-          authorDeviceId: effectiveDeviceId,
-          uid: effectiveUid,
-          authorName: effectiveName,
-          authorHandle: effectiveHandle,
-          authorAvatar: effectiveAvatar,
-        });
+      if (created && created.id) {
+        setReplies(prev => prev.map(r => r.id === optimisticId ? { ...optimisticItem, id: created.id } : r));
       }
     } catch (err) {
       console.warn('Backend reply persist deferred:', err);
@@ -573,38 +553,50 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
     } catch {}
 
     try {
-      const payload: Record<string, any> = {
-        root_id: post.id,
-        parent_id: parentReply.id,
-        uid: effectiveUid,
-        author_device_id: effectiveDeviceId,
-        author_name: effectiveName,
-        author_handle: effectiveHandle,
-        author_avatar: effectiveAvatar,
-        content: content.trim(),
-        media_type: 'NONE',
-      };
-      const { data } = await supabase.from('banter_posts').insert([payload]).select().single();
-      if (data) {
-        setReplies(prev => prev.map(r => r.id === optimisticId ? { ...optimisticDeepReply, id: data.id } : r));
-      }
-    } catch {
-      void banterService.createPost({
+      const created = await banterService.createPost({
         content,
         parentId: parentReply.id,
         rootId: post.id,
         authorDeviceId: effectiveDeviceId,
         uid: effectiveUid,
+        authorName: effectiveName,
+        authorHandle: effectiveHandle,
+        authorAvatar: effectiveAvatar,
       });
+      if (created && created.id) {
+        setReplies(prev => prev.map(r => r.id === optimisticId ? { ...optimisticDeepReply, id: created.id } : r));
+      }
+    } catch (err) {
+      console.warn('Backend deep reply persist deferred:', err);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-2xl mx-auto py-6 space-y-4 animate-fadeIn">
-        <div className="h-10 w-24 bg-zinc-900 rounded-full animate-pulse" />
-        <div className="h-44 bg-zinc-900/60 rounded-2xl border border-zinc-800 animate-pulse" />
-        <div className="h-28 bg-zinc-900/40 rounded-2xl border border-zinc-800 animate-pulse" />
+      <div
+        className="w-full max-w-2xl mx-auto min-h-screen bg-[#000000] text-white pb-24 animate-fadeIn"
+        data-testid="banter-thread-view"
+      >
+        <div className="sticky top-0 z-30 flex items-center gap-4 bg-black/85 backdrop-blur-md px-3 py-3 border-b border-zinc-800">
+          <button
+            type="button"
+            aria-label="Back to feed"
+            onClick={() => onBack()}
+            className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h1 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-1.5">
+              <span>Post</span>
+            </h1>
+          </div>
+        </div>
+        <div className="py-6 space-y-4 px-3">
+          <div className="h-10 w-24 bg-zinc-900 rounded-full animate-pulse" />
+          <div className="h-44 bg-zinc-900/60 rounded-2xl border border-zinc-800 animate-pulse" />
+          <div className="h-28 bg-zinc-900/40 rounded-2xl border border-zinc-800 animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -843,43 +835,61 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
           </p>
 
           {/* Media Presentation */}
-          {post.mediaUrls && post.mediaUrls.length > 0 && (
-            <div className="my-3">
-              {post.mediaType === 'VIDEO' ? (
-                <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-black aspect-video max-h-96 flex items-center justify-center">
-                  <video
-                    src={post.mediaUrls[0]}
-                    controls
-                    className="w-full h-full object-contain"
-                  />
-                  <span className="absolute bottom-2.5 left-2.5 rounded-md bg-black/80 px-2 py-0.5 text-[10px] font-mono text-zinc-300 flex items-center gap-1">
-                    <Film className="h-3 w-3 text-sky-400" />
-                    <span>≤ 15s Clip</span>
-                  </span>
-                </div>
-              ) : post.mediaUrls.length === 1 ? (
-                <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-video max-h-96">
-                  <img
-                    src={post.mediaUrls[0]}
-                    alt="Post media"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 rounded-2xl overflow-hidden border border-zinc-800">
-                  {post.mediaUrls.slice(0, 2).map((url: string, i: number) => (
-                    <div key={i} className="aspect-square bg-zinc-950 overflow-hidden">
-                      <img
-                        src={url}
-                        alt={`Media ${i + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {post.mediaUrls && post.mediaUrls.length > 0 && (() => {
+            const mediaList = post.mediaUrls;
+            return (
+              <div className="my-3">
+                {post.mediaType === 'VIDEO' ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-black aspect-video max-h-96 flex items-center justify-center">
+                    <video
+                      src={mediaList[0]}
+                      controls
+                      className="w-full h-full object-contain"
+                    />
+                    <span className="absolute bottom-2.5 left-2.5 rounded-md bg-black/80 px-2 py-0.5 text-[10px] font-mono text-zinc-300 flex items-center gap-1">
+                      <Film className="h-3 w-3 text-sky-400" />
+                      <span>≤ 15s Clip</span>
+                    </span>
+                  </div>
+                ) : mediaList.length === 1 ? (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxImageUrl(mediaList[0]);
+                    }}
+                    className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-video max-h-96 cursor-pointer group/img hover:border-zinc-700 transition"
+                    title="Click to view image"
+                  >
+                    <img
+                      src={mediaList[0]}
+                      alt="Post media"
+                      className="w-full h-full object-cover group-hover/img:scale-[1.01] transition-transform duration-200"
+                    />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl overflow-hidden border border-zinc-800">
+                    {mediaList.slice(0, 2).map((url: string, i: number) => (
+                      <div
+                        key={i}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxImageUrl(url);
+                        }}
+                        className="aspect-square bg-zinc-950 overflow-hidden cursor-pointer group/img hover:border-zinc-700 transition"
+                        title="Click to view image"
+                      >
+                        <img
+                          src={url}
+                          alt={`Media ${i + 1}`}
+                          className="w-full h-full object-cover group-hover/img:scale-[1.01] transition-transform duration-200"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Interactive Community Poll */}
           {post.poll && (
@@ -1209,6 +1219,23 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                           />
                         )}
 
+                        {((reply.mediaUrls && reply.mediaUrls.length > 0) || reply.imageUrl) && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightboxImageUrl(reply.mediaUrls?.[0] || reply.imageUrl || null);
+                            }}
+                            className="my-2 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 max-h-60 max-w-sm cursor-pointer hover:border-zinc-700 transition"
+                            title="Click to view image"
+                          >
+                            <img
+                              src={reply.mediaUrls?.[0] || reply.imageUrl}
+                              alt="Reply media"
+                              className="w-full h-auto object-cover max-h-60"
+                            />
+                          </div>
+                        )}
+
                         {/* Reply mini action toolbar */}
                         <div className="flex items-center gap-5 mt-2.5 text-zinc-500 text-xs">
                           <button
@@ -1221,8 +1248,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                             className="flex items-center gap-1 hover:text-sky-400 cursor-pointer p-1 text-zinc-400"
                             title="Reply"
                           >
-                            <span className="text-[13px] leading-none">💬</span>
-                            <span className="font-mono">{reply.commentCount || reply.repliesCount || 0}</span>
+                            <span className="font-mono text-xs">💬 {reply.commentCount || reply.repliesCount || 0}</span>
                           </button>
                           <button
                             type="button"
@@ -1500,6 +1526,13 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
           coachLeague={authorMeta.coachLeague}
         />
       )}
+
+      <ImageLightboxModal
+        isOpen={Boolean(lightboxImageUrl)}
+        imageUrl={lightboxImageUrl}
+        altText="Thread media visual"
+        onClose={() => setLightboxImageUrl(null)}
+      />
     </div>
   );
 };

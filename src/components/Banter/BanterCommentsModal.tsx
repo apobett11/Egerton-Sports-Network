@@ -3,6 +3,7 @@ import { X, MessageSquare, AlertCircle, User, ArrowLeft, BarChart2, ShieldCheck,
 import { formatRelativeTime } from '../../lib/predictions/utils';
 import { banterService } from '../../services/predictions/banterService';
 import { BANTER_CONFIG } from '../../lib/predictions/constants';
+import { ImageLightboxModal } from '../common/ImageLightboxModal';
 import type { BanterPost, BanterComment, ReactionType } from '../../types/predictions';
 
 interface BanterCommentsModalProps {
@@ -23,6 +24,7 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -119,8 +121,16 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
             <p className="text-sm text-slate-100 leading-relaxed break-words">{post.content}</p>
 
             {post.imageUrl && (
-              <div className="mt-3 overflow-hidden rounded-xl border border-slate-700/80 max-h-72 bg-black/40">
-                <img src={post.imageUrl} alt="Banter media" className="w-full h-auto object-cover max-h-72 rounded-lg" />
+              <div
+                onClick={() => setLightboxImageUrl(post.imageUrl || null)}
+                className="mt-3 overflow-hidden rounded-xl border border-slate-700/80 max-h-72 bg-black/40 cursor-pointer group/img hover:border-slate-500 transition"
+                title="Click to view image"
+              >
+                <img
+                  src={post.imageUrl}
+                  alt="Banter media"
+                  className="w-full h-auto object-cover max-h-72 rounded-lg group-hover/img:scale-[1.01] transition-transform duration-200"
+                />
               </div>
             )}
 
@@ -175,6 +185,19 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
                     <span className="text-[10px] text-slate-500">{formatRelativeTime(c.createdAt)}</span>
                   </div>
                   <p className="text-slate-200 leading-relaxed break-words pl-6.5">{c.content}</p>
+                  {(c as any).imageUrl && (
+                    <div
+                      onClick={() => setLightboxImageUrl((c as any).imageUrl)}
+                      className="ml-6.5 mt-1.5 overflow-hidden rounded-lg border border-slate-700/80 max-h-48 max-w-xs bg-black/40 cursor-pointer hover:border-slate-500 transition"
+                      title="Click to view image"
+                    >
+                      <img
+                        src={(c as any).imageUrl}
+                        alt="Reply media"
+                        className="w-full h-auto object-cover max-h-48 rounded"
+                      />
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -212,6 +235,13 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
           </div>
         </form>
       </div>
+
+      <ImageLightboxModal
+        isOpen={Boolean(lightboxImageUrl)}
+        imageUrl={lightboxImageUrl}
+        altText="Comment media visual"
+        onClose={() => setLightboxImageUrl(null)}
+      />
     </div>
   );
 };

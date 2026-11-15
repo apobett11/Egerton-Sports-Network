@@ -56,6 +56,34 @@ export interface CreatePostOptions {
 // Pure Helpers for Video Validation & Thread Calculation (Exported for Unit Tests)
 // -------------------------------------------------------------
 
+export function parseMediaFromContent(rawContent: string): {
+  cleanContent: string;
+  mediaUrls: string[];
+  mediaType: BanterMediaType;
+} {
+  if (!rawContent) {
+    return { cleanContent: '', mediaUrls: [], mediaType: 'NONE' };
+  }
+
+  const mediaUrls: string[] = [];
+  let mediaType: BanterMediaType = 'NONE';
+
+  const cleanContent = rawContent.replace(/\[media:(image|video):([^\]]+)\]/g, (_, type, url) => {
+    const cleanUrl = url.trim();
+    if (cleanUrl) {
+      mediaUrls.push(cleanUrl);
+      if (type === 'video') {
+        mediaType = 'VIDEO';
+      } else if (mediaType !== 'VIDEO') {
+        mediaType = mediaUrls.length > 1 ? 'DUAL_IMAGE' : 'IMAGE';
+      }
+    }
+    return '';
+  }).trim();
+
+  return { cleanContent, mediaUrls, mediaType };
+}
+
 export function checkVideoDurationLimit(duration: number, maxLimit = 15.0): boolean {
   return typeof duration === 'number' && duration > 0 && duration <= maxLimit;
 }
@@ -127,6 +155,9 @@ export function calculateReplyMetadata(parent: {
 
 export function isTestPost(post: BanterPost | { content?: string; id?: string }): boolean {
   if (!post.content || !post.content.trim()) return true;
+  if (typeof window !== 'undefined' && ((window as any).__E2E_TEST__ || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return false;
+  }
   const c = post.content.toLowerCase();
   return (
     c.includes('root derby match take') ||
@@ -205,607 +236,7 @@ export const POLL_SURPRISE_TEAM: BanterPoll = {
 
 const SEEDED_POLL_1 = POLL_PAUSE_RESUMPTION;
 
-export const SEEDED_BANTER_POSTS: BanterPost[] = [
-  // 1. League pause official circular
-  {
-    id: 'b1000000-0000-4000-8000-000000000001',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000001',
-    depth: 0,
-    matchId: null,
-    leagueId: '11111111-1111-1111-1111-111111111111',
-    authorHandle: 'EgerSports Desk',
-    authorName: 'Egerton Sports Desk',
-    authorType: 'journalist',
-    authorBadge: 'SECRETARIAT',
-    content: 'OFFICIAL: Egerton Sports Directorate confirms Matchday 13 remains paused while Pavilion Pitch B leveling and Main Stadium drainage works continue. No fixtures will be played until grounds committee certifies readiness. #EgertonSportsNetwork #EPLPause',
-    sourceType: 'journalist',
-    mediaType: 'IMAGE',
-    mediaUrls: [LEAGUE_PAUSE_OFFICIAL_NOTICE_SCREENSHOT],
-    imageUrl: LEAGUE_PAUSE_OFFICIAL_NOTICE_SCREENSHOT,
-    reactionFireCount: 84,
-    reactionClownCount: 5,
-    reactionSkullCount: 12,
-    commentCount: 3,
-    repliesCount: 3,
-    repostCount: 24,
-    impressionsCount: 3200,
-    createdAt: '2026-10-26T10:00:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000101',
-    parentId: 'b1000000-0000-4000-8000-000000000001',
-    rootId: 'b1000000-0000-4000-8000-000000000001',
-    depth: 1,
-    authorHandle: 'Tatton Ultras #42',
-    authorName: 'Tatton Ultras',
-    authorType: 'user',
-    content: 'Player safety is first. Last rainy Saturday at Pavilion was water polo not football. Good call by the directorate.',
-    sourceType: 'user',
-    reactionFireCount: 19,
-    reactionClownCount: 1,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-10-26T10:45:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000102',
-    parentId: 'b1000000-0000-4000-8000-000000000001',
-    rootId: 'b1000000-0000-4000-8000-000000000001',
-    depth: 1,
-    authorHandle: 'SuperEagles Diehard #09',
-    authorName: 'SuperEagles Diehard',
-    authorType: 'user',
-    content: 'Why now though?! We had 11 wins in 12 games and 41 goals scored! Chasing pack needed oxygen and they got a ventilator 😂',
-    sourceType: 'user',
-    reactionFireCount: 31,
-    reactionClownCount: 4,
-    reactionSkullCount: 6,
-    commentCount: 0,
-    createdAt: '2026-10-26T11:15:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000103',
-    parentId: 'b1000000-0000-4000-8000-000000000001',
-    rootId: 'b1000000-0000-4000-8000-000000000001',
-    depth: 1,
-    authorHandle: 'Legends Army #10',
-    authorName: 'Legends Army',
-    authorType: 'user',
-    content: 'Ventilator for who? We have 26 points and we beat your local rivals. MD13 resumption will humble the birds.',
-    sourceType: 'user',
-    reactionFireCount: 22,
-    reactionClownCount: 2,
-    reactionSkullCount: 1,
-    commentCount: 0,
-    createdAt: '2026-10-26T12:00:00.000Z',
-  },
-
-  // 2. Title race dominance + Poll
-  {
-    id: 'b1000000-0000-4000-8000-000000000002',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000002',
-    depth: 0,
-    matchId: null,
-    leagueId: '11111111-1111-1111-1111-111111111111',
-    authorHandle: 'Campus Oracle #19',
-    authorName: 'Campus Oracle',
-    authorType: 'user',
-    authorBadge: 'ANALYST',
-    content: '41 goals scored by Super Eagles vs 39 goals conceded by Mighty Blacks... The goal difference gap (+32 vs -30) is 62 goals across 12 games! Has there EVER been a more lopsided league in Egerton history? 💀🔥 #EPL #EgertonStandings #CampusBanter',
-    sourceType: 'seed',
-    mediaType: 'IMAGE',
-    mediaUrls: [SUPER_EAGLES_RUNAWAY_LEADER_SCREENSHOT],
-    imageUrl: SUPER_EAGLES_RUNAWAY_LEADER_SCREENSHOT,
-    pollId: 'poll-pause-01',
-    poll: POLL_PAUSE_RESUMPTION,
-    reactionFireCount: 112,
-    reactionClownCount: 18,
-    reactionSkullCount: 45,
-    commentCount: 3,
-    repliesCount: 3,
-    repostCount: 38,
-    impressionsCount: 4850,
-    createdAt: '2026-10-27T14:30:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000201',
-    parentId: 'b1000000-0000-4000-8000-000000000002',
-    rootId: 'b1000000-0000-4000-8000-000000000002',
-    depth: 1,
-    authorHandle: 'Mighty Blacks Faithful #03',
-    authorName: 'Mighty Blacks Faithful',
-    authorType: 'user',
-    content: 'Admin delete this immediately. We are already dealing with internal club issues, no need to broadcast our suffering 😭',
-    sourceType: 'user',
-    reactionFireCount: 14,
-    reactionClownCount: 9,
-    reactionSkullCount: 28,
-    commentCount: 0,
-    createdAt: '2026-10-27T15:10:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000202',
-    parentId: 'b1000000-0000-4000-8000-000000000002',
-    rootId: 'b1000000-0000-4000-8000-000000000002',
-    depth: 1,
-    authorHandle: 'Varsity Scout #07',
-    authorName: 'Varsity Scout',
-    authorType: 'user',
-    content: 'Mighty Blacks midfield is leaving their back four exposed. Distance between lines is 35m! Any through ball is a 1-on-1.',
-    sourceType: 'user',
-    reactionFireCount: 26,
-    reactionClownCount: 0,
-    reactionSkullCount: 2,
-    commentCount: 0,
-    createdAt: '2026-10-27T16:00:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000203',
-    parentId: 'b1000000-0000-4000-8000-000000000002',
-    rootId: 'b1000000-0000-4000-8000-000000000002',
-    depth: 1,
-    authorHandle: 'BCOM Sniper #11',
-    authorName: 'BCOM Sniper',
-    authorType: 'user',
-    content: 'Super Eagles play direct on the wings. When they face a compact low block on Pitch C they will drop points.',
-    sourceType: 'user',
-    reactionFireCount: 18,
-    reactionClownCount: 3,
-    reactionSkullCount: 1,
-    commentCount: 0,
-    createdAt: '2026-10-27T16:45:00.000Z',
-  },
-
-  // 3. Referee audit + Poll
-  {
-    id: 'b1000000-0000-4000-8000-000000000003',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000003',
-    depth: 0,
-    matchId: null,
-    leagueId: '11111111-1111-1111-1111-111111111111',
-    authorHandle: 'Ref Watch Egerton',
-    authorName: 'Ref Watch Egerton',
-    authorType: 'journalist',
-    authorBadge: 'OFFICIALS',
-    content: 'Mid-season referee audit 📝: Referee Jark leads university with 14 penalties. Ref Lamoh flashed 38 cards without losing control once. Ref Chalo still disallowing any goal within 5 yards of the keeper. Who has been your best ref? #RefWatch #OfficiatingAudit',
-    sourceType: 'journalist',
-    mediaType: 'IMAGE',
-    mediaUrls: [REFEREE_JARK_CONTROVERSY_SCREENSHOT],
-    imageUrl: REFEREE_JARK_CONTROVERSY_SCREENSHOT,
-    pollId: 'poll-ref-02',
-    poll: POLL_OFFICIATING,
-    reactionFireCount: 67,
-    reactionClownCount: 8,
-    reactionSkullCount: 14,
-    commentCount: 3,
-    repliesCount: 3,
-    repostCount: 19,
-    impressionsCount: 2750,
-    createdAt: '2026-10-28T16:15:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000301',
-    parentId: 'b1000000-0000-4000-8000-000000000003',
-    rootId: 'b1000000-0000-4000-8000-000000000003',
-    depth: 1,
-    authorHandle: 'Celtics Captain #04',
-    authorName: 'Celtics Captain',
-    authorType: 'user',
-    content: 'Lamoh is the only ref who explains decisions to captains calmly. The rest blow whistles like security on curfew.',
-    sourceType: 'user',
-    reactionFireCount: 34,
-    reactionClownCount: 1,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-10-28T17:00:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000302',
-    parentId: 'b1000000-0000-4000-8000-000000000003',
-    rootId: 'b1000000-0000-4000-8000-000000000003',
-    depth: 1,
-    authorHandle: 'Pavilion Pundit #21',
-    authorName: 'Pavilion Pundit',
-    authorType: 'user',
-    content: 'Jark gave two penalties to BCOM against us in 15 mins! If you trip over your own boots at the box he points to the spot!',
-    sourceType: 'user',
-    reactionFireCount: 28,
-    reactionClownCount: 7,
-    reactionSkullCount: 12,
-    commentCount: 0,
-    createdAt: '2026-10-28T17:40:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000303',
-    parentId: 'b1000000-0000-4000-8000-000000000003',
-    rootId: 'b1000000-0000-4000-8000-000000000003',
-    depth: 1,
-    authorHandle: 'Ref Watch Egerton',
-    authorName: 'Ref Watch Egerton',
-    authorType: 'journalist',
-    content: 'Both fouls were clear studs-up on match video. Referee committee confirmed Jark was 100% justified.',
-    sourceType: 'journalist',
-    reactionFireCount: 15,
-    reactionClownCount: 2,
-    reactionSkullCount: 1,
-    commentCount: 0,
-    createdAt: '2026-10-28T18:15:00.000Z',
-  },
-
-  // 4. Legends Coach Tactical statement
-  {
-    id: 'b1000000-0000-4000-8000-000000000004',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000004',
-    depth: 0,
-    matchId: null,
-    leagueId: '11111111-1111-1111-1111-111111111111',
-    authorHandle: 'Legends FC Coach',
-    authorName: 'Coach Eric (Legends)',
-    authorType: 'coach',
-    authorBadge: 'Legends FC Coach',
-    content: 'Coach Eric (Legends FC): We are using this pause effectively. Double tactical sessions at Pavilion gymnasium. 26 points puts us right within striking distance. We will not concede easy goals when MD13 resumes. #LegendsFC #CoachNotes #TitleRace',
-    sourceType: 'journalist',
-    mediaType: 'NONE',
-    taggedTeamName: 'Legends Fc',
-    reactionFireCount: 42,
-    reactionClownCount: 2,
-    reactionSkullCount: 1,
-    commentCount: 2,
-    repliesCount: 2,
-    repostCount: 11,
-    impressionsCount: 1890,
-    createdAt: '2026-10-29T11:00:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000401',
-    parentId: 'b1000000-0000-4000-8000-000000000004',
-    rootId: 'b1000000-0000-4000-8000-000000000004',
-    depth: 1,
-    authorHandle: 'Tatton Striker #14',
-    authorName: 'Tatton Striker',
-    authorType: 'user',
-    content: 'Coach please start Kamau on the right wing, he creates twice as many chances from wide areas than through the middle.',
-    sourceType: 'user',
-    reactionFireCount: 16,
-    reactionClownCount: 0,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-10-29T11:45:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000402',
-    parentId: 'b1000000-0000-4000-8000-000000000004',
-    rootId: 'b1000000-0000-4000-8000-000000000004',
-    depth: 1,
-    authorHandle: 'Legends FC Coach',
-    authorName: 'Coach Eric (Legends)',
-    authorType: 'coach',
-    authorBadge: 'Legends FC Coach',
-    content: 'Noted. Tactical versatility is what will win the title in the second leg.',
-    sourceType: 'journalist',
-    reactionFireCount: 24,
-    reactionClownCount: 0,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-10-29T12:30:00.000Z',
-  },
-
-  // 5. Mighty Blacks meme
-  {
-    id: 'b1000000-0000-4000-8000-000000000005',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000005',
-    depth: 0,
-    matchId: null,
-    leagueId: '11111111-1111-1111-1111-111111111111',
-    authorHandle: 'Njoro Troll Football',
-    authorName: 'Njoro Troll Football',
-    authorType: 'user',
-    content: 'Mighty Blacks defense: 39 goals shipped in 12 games. Even HELB gives students more security than this backline. Coach needs to park two varsity buses in front of goal when MD13 kicks off! 🚌🛑 #EPLBanter #MightyBlacks #SieveDefense',
-    sourceType: 'seed',
-    mediaType: 'IMAGE',
-    mediaUrls: [MIGHTY_BLACKS_DEFENSE_COLLAPSE_SCREENSHOT],
-    imageUrl: MIGHTY_BLACKS_DEFENSE_COLLAPSE_SCREENSHOT,
-    reactionFireCount: 98,
-    reactionClownCount: 29,
-    reactionSkullCount: 53,
-    commentCount: 2,
-    repliesCount: 2,
-    repostCount: 41,
-    impressionsCount: 5400,
-    createdAt: '2026-10-30T18:45:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000501',
-    parentId: 'b1000000-0000-4000-8000-000000000005',
-    rootId: 'b1000000-0000-4000-8000-000000000005',
-    depth: 1,
-    authorHandle: 'Black Panther #99',
-    authorName: 'Black Panther',
-    authorType: 'user',
-    content: 'Leave HELB out of our football miseries please 😭 We conceded 5 against Super Eagles, we are numb to the pain.',
-    sourceType: 'user',
-    reactionFireCount: 15,
-    reactionClownCount: 11,
-    reactionSkullCount: 33,
-    commentCount: 0,
-    createdAt: '2026-10-30T19:20:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000502',
-    parentId: 'b1000000-0000-4000-8000-000000000005',
-    rootId: 'b1000000-0000-4000-8000-000000000005',
-    depth: 1,
-    authorHandle: 'Blue Blazers Fan #16',
-    authorName: 'Blue Blazers Fan',
-    authorType: 'user',
-    content: 'At least you have 2 wins. Santos are 11th with only 2 wins and spent the whole pre-season hyping their signings!',
-    sourceType: 'user',
-    reactionFireCount: 27,
-    reactionClownCount: 5,
-    reactionSkullCount: 12,
-    commentCount: 0,
-    createdAt: '2026-10-30T20:00:00.000Z',
-  },
-
-  // 6. Golden Boot leader
-  {
-    id: 'b1000000-0000-4000-8000-000000000006',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000006',
-    depth: 0,
-    matchId: null,
-    leagueId: '11111111-1111-1111-1111-111111111111',
-    authorHandle: 'EgerSports Desk',
-    authorName: 'Egerton Sports Desk',
-    authorType: 'journalist',
-    authorBadge: 'JOURNALIST',
-    content: 'M. Ochieng has 14 goals in 12 games for Super Eagles before the league paused. On pace to shatter the all-time Egerton single-season scoring record (19 goals). Is he currently the best university baller in Nakuru County? 👟⚽🔥 #GoldenBoot #EPLTopScorer',
-    sourceType: 'journalist',
-    mediaType: 'IMAGE',
-    mediaUrls: [TOP_SCORER_SCREENSHOT],
-    imageUrl: TOP_SCORER_SCREENSHOT,
-    taggedTeamName: 'Super eagles',
-    reactionFireCount: 88,
-    reactionClownCount: 4,
-    reactionSkullCount: 9,
-    commentCount: 2,
-    repliesCount: 2,
-    repostCount: 28,
-    impressionsCount: 3600,
-    createdAt: '2026-10-30T21:10:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000601',
-    parentId: 'b1000000-0000-4000-8000-000000000006',
-    rootId: 'b1000000-0000-4000-8000-000000000006',
-    depth: 1,
-    authorHandle: 'Varsity Striker #04',
-    authorName: 'Varsity Striker',
-    authorType: 'user',
-    content: 'He has blistering pace on the counter. Once center backs push past halfway, nobody in this league can catch him.',
-    sourceType: 'user',
-    reactionFireCount: 29,
-    reactionClownCount: 0,
-    reactionSkullCount: 1,
-    commentCount: 0,
-    createdAt: '2026-10-30T21:45:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000602',
-    parentId: 'b1000000-0000-4000-8000-000000000006',
-    rootId: 'b1000000-0000-4000-8000-000000000006',
-    depth: 1,
-    authorHandle: 'Wazito Hardcore #08',
-    authorName: 'Wazito Hardcore',
-    authorType: 'user',
-    content: 'Wait until he plays Wazito on Pitch A. Our captain will give him 90 minutes of strict man-marking.',
-    sourceType: 'user',
-    reactionFireCount: 21,
-    reactionClownCount: 2,
-    reactionSkullCount: 3,
-    commentCount: 0,
-    createdAt: '2026-10-30T22:30:00.000Z',
-  },
-
-  // 7. Championship banter + Law FC + Poll
-  {
-    id: 'b1000000-0000-4000-8000-000000000007',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000007',
-    depth: 0,
-    matchId: null,
-    leagueId: '22222222-2222-2222-2222-222222222222',
-    authorHandle: 'Campus Oracle #19',
-    authorName: 'Campus Oracle',
-    authorType: 'user',
-    authorBadge: 'ANALYST',
-    content: 'Championship race: Talanta FC (25 pts) and Ajax FC (22 pts) are playing champagne football! Meanwhile Law FC are 10th with 4 points and currently drafting an injunction against the referee offside flag ⚖️📂😂 #ChampionshipBanter #LawFC #TalantaFC',
-    sourceType: 'user',
-    mediaType: 'IMAGE',
-    mediaUrls: [LAW_FC_TABLE_SCREENSHOT],
-    imageUrl: LAW_FC_TABLE_SCREENSHOT,
-    pollId: 'poll-champ-03',
-    poll: POLL_CHAMPIONSHIP_PROMOTION,
-    reactionFireCount: 73,
-    reactionClownCount: 19,
-    reactionSkullCount: 32,
-    commentCount: 2,
-    repliesCount: 2,
-    repostCount: 22,
-    impressionsCount: 3100,
-    createdAt: '2026-10-31T15:20:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000701',
-    parentId: 'b1000000-0000-4000-8000-000000000007',
-    rootId: 'b1000000-0000-4000-8000-000000000007',
-    depth: 1,
-    authorHandle: 'Law Campus Rep #01',
-    authorName: 'Law Campus Rep',
-    authorType: 'user',
-    content: 'We are not filing an injunction, but that 84th min penalty against Ajax was an egregious injustice! We demand VAR!',
-    sourceType: 'user',
-    reactionFireCount: 16,
-    reactionClownCount: 8,
-    reactionSkullCount: 20,
-    commentCount: 0,
-    createdAt: '2026-10-31T16:00:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000702',
-    parentId: 'b1000000-0000-4000-8000-000000000007',
-    rootId: 'b1000000-0000-4000-8000-000000000007',
-    depth: 1,
-    authorHandle: 'Talanta Supporter #20',
-    authorName: 'Talanta Supporter',
-    authorType: 'user',
-    content: 'Lawyers should stick to moot courts! Talanta are getting promoted to EPL next season, book the date!',
-    sourceType: 'user',
-    reactionFireCount: 28,
-    reactionClownCount: 1,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-10-31T16:50:00.000Z',
-  },
-
-  // 8. Match of the season Q&A + Poll
-  {
-    id: 'b1000000-0000-4000-8000-000000000008',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000008',
-    depth: 0,
-    matchId: null,
-    leagueId: '11111111-1111-1111-1111-111111111111',
-    authorHandle: 'Tatton Ultras #42',
-    authorName: 'Tatton Ultras',
-    authorType: 'user',
-    authorBadge: 'FAN REP',
-    content: 'QUESTION FOR THE FANS 🎤: What has been your match of the season so far before this pause? Best goal, wildest derby, or biggest heartbreak? Drop your take below 👇 #EgertonFootball #CampusDebate #MatchOfTheSeason',
-    sourceType: 'user',
-    mediaType: 'NONE',
-    pollId: 'poll-qa-04',
-    poll: POLL_SURPRISE_TEAM,
-    reactionFireCount: 55,
-    reactionClownCount: 3,
-    reactionSkullCount: 4,
-    commentCount: 3,
-    repliesCount: 3,
-    repostCount: 14,
-    impressionsCount: 2150,
-    createdAt: '2026-11-01T08:30:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000801',
-    parentId: 'b1000000-0000-4000-8000-000000000008',
-    rootId: 'b1000000-0000-4000-8000-000000000008',
-    depth: 1,
-    authorHandle: 'BCOM Sniper #11',
-    authorName: 'BCOM Sniper',
-    authorType: 'user',
-    content: 'BCOM 3-2 Legends! The rain started in the 70th min, Pitch A was electric, and we scored the winner in the 93rd min!',
-    sourceType: 'user',
-    reactionFireCount: 32,
-    reactionClownCount: 0,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-11-01T09:00:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000802',
-    parentId: 'b1000000-0000-4000-8000-000000000008',
-    rootId: 'b1000000-0000-4000-8000-000000000008',
-    depth: 1,
-    authorHandle: 'SuperEagles Diehard #09',
-    authorName: 'SuperEagles Diehard',
-    authorType: 'user',
-    content: 'Super Eagles 4-1 Wazito. Pure football perfection. 4 different scorers and our keeper saved a penalty.',
-    sourceType: 'user',
-    reactionFireCount: 26,
-    reactionClownCount: 1,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-11-01T09:30:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000803',
-    parentId: 'b1000000-0000-4000-8000-000000000008',
-    rootId: 'b1000000-0000-4000-8000-000000000008',
-    depth: 1,
-    authorHandle: 'Santos Side Rep #27',
-    authorName: 'Santos Side Rep',
-    authorType: 'user',
-    content: 'Santos 2-1 Mighty Blacks. The only weekend this semester where our hostel was in a celebratory mood.',
-    sourceType: 'user',
-    reactionFireCount: 18,
-    reactionClownCount: 4,
-    reactionSkullCount: 5,
-    commentCount: 0,
-    createdAt: '2026-11-01T09:50:00.000Z',
-  },
-
-  // 9. Super Eagles Coach statement
-  {
-    id: 'b1000000-0000-4000-8000-000000000009',
-    parentId: null,
-    rootId: 'b1000000-0000-4000-8000-000000000009',
-    depth: 0,
-    matchId: null,
-    leagueId: '11111111-1111-1111-1111-111111111111',
-    authorHandle: 'Super Eagles Coach',
-    authorName: 'Coach Super Eagles',
-    authorType: 'coach',
-    authorBadge: 'Super Eagles Coach',
-    content: 'Coach Super Eagles: To our fans: thank you for the energy in the first 12 rounds. 33 points is a solid start, but trophies are won in December, not October. We are staying sharp in training and respecting every opponent when MD13 resumes. #EagleMentality',
-    sourceType: 'journalist',
-    mediaType: 'NONE',
-    taggedTeamName: 'Super eagles',
-    reactionFireCount: 61,
-    reactionClownCount: 1,
-    reactionSkullCount: 0,
-    commentCount: 2,
-    repliesCount: 2,
-    repostCount: 16,
-    impressionsCount: 2300,
-    createdAt: '2026-11-01T10:15:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000901',
-    parentId: 'b1000000-0000-4000-8000-000000000009',
-    rootId: 'b1000000-0000-4000-8000-000000000009',
-    depth: 1,
-    authorHandle: 'Campus Scout #15',
-    authorName: 'Campus Scout',
-    authorType: 'user',
-    content: 'Humility from the league leaders. That is why they are 7 points clear at the top.',
-    sourceType: 'user',
-    reactionFireCount: 19,
-    reactionClownCount: 0,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-11-01T10:45:00.000Z',
-  },
-  {
-    id: 'b1000000-0000-4000-8000-000000000902',
-    parentId: 'b1000000-0000-4000-8000-000000000009',
-    rootId: 'b1000000-0000-4000-8000-000000000009',
-    depth: 1,
-    authorHandle: 'Tatton Ultras #42',
-    authorName: 'Tatton Ultras',
-    authorType: 'user',
-    content: 'Bring on MD13! We are ready to fill the sidelines at Pitch A!',
-    sourceType: 'user',
-    reactionFireCount: 23,
-    reactionClownCount: 0,
-    reactionSkullCount: 0,
-    commentCount: 0,
-    createdAt: '2026-11-01T11:20:00.000Z',
-  },
-];
+export const SEEDED_BANTER_POSTS: BanterPost[] = [];
 
 export function isCoachPost(post: BanterPost): boolean {
   if (post.authorType === 'coach') return true;
@@ -1201,9 +632,7 @@ export class BanterService {
       getCleanMessageRef(p) === postId ||
       (resolvedId.length >= 6 && p.id.startsWith(resolvedId));
 
-    const post = this.localPosts.find(matchesId)
-      || SEEDED_BANTER_POSTS.find(matchesId)
-      || (fictionalBanterPosts() as BanterPost[]).find(matchesId);
+    const post = this.localPosts.find(matchesId);
 
     if (post) {
       this.registerPostRef(post.id, getCleanMessageRef(post));
@@ -1215,51 +644,73 @@ export class BanterService {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('banter_posts')
-        .select('*')
-        .eq('id', resolvedId)
-        .maybeSingle();
+      const isUuid = /^[0-9a-f-]{36}$/i.test(resolvedId);
+      if (isUuid) {
+        const { data, error } = await supabase
+          .from('banter_posts')
+          .select('*')
+          .eq('id', resolvedId)
+          .maybeSingle();
 
-      if (!error && data) {
-        this.registerPostRef(data.id, getCleanMessageRef(data.id));
-        if (data.poll_id) {
-          await this.syncPollsForDevice([data.poll_id], devId);
+        if (!error && data) {
+          this.registerPostRef(data.id, getCleanMessageRef(data.id));
+          if (data.poll_id) {
+            await this.syncPollsForDevice([data.poll_id], devId);
+          }
+          const mapped = this.mapDatabaseRowToPost(data, {}, devId);
+          return mapped;
         }
-        const mapped = this.mapDatabaseRowToPost(data, {}, devId);
-        return mapped;
-      }
 
-      // If not in banter_posts, look up in banter_comments
-      const { data: cData, error: cErr } = await supabase
-        .from('banter_comments')
-        .select('*')
-        .eq('id', resolvedId)
-        .maybeSingle();
+        // If not in banter_posts, look up in banter_comments
+        const { data: cData, error: cErr } = await supabase
+          .from('banter_comments')
+          .select('*')
+          .eq('id', resolvedId)
+          .maybeSingle();
 
-      if (!cErr && cData) {
-        return {
-          id: cData.id,
-          parentId: cData.post_id,
-          rootId: cData.post_id,
-          depth: 1,
-          userId: cData.device_id,
-          authorDeviceId: cData.device_id,
-          authorHandle: cData.author_handle || 'guest',
-          authorName: (cData.author_handle || 'Guest').split(' #')[0],
-          authorType: cData.author_type || 'user',
-          sourceType: 'user' as const,
-          content: cData.content,
-          reactionFireCount: 0,
-          reactionClownCount: 0,
-          reactionSkullCount: 0,
-          commentCount: 0,
-          repliesCount: 0,
-          repostCount: 0,
-          impressionsCount: 1,
-          createdAt: cData.created_at,
-          userReactions: {}
-        };
+        if (!cErr && cData) {
+          const parsedMedia = parseMediaFromContent(cData.content || '');
+          return {
+            id: cData.id,
+            parentId: cData.post_id,
+            rootId: cData.post_id,
+            depth: 1,
+            userId: cData.device_id,
+            authorDeviceId: cData.device_id,
+            authorHandle: cData.author_handle || 'guest',
+            authorName: (cData.author_handle || 'Guest').split(' #')[0],
+            authorType: cData.author_type || 'user',
+            sourceType: 'user' as const,
+            content: parsedMedia.cleanContent || cData.content,
+            mediaUrls: parsedMedia.mediaUrls,
+            mediaType: parsedMedia.mediaType,
+            imageUrl: parsedMedia.mediaUrls[0] || undefined,
+            reactionFireCount: 0,
+            reactionClownCount: 0,
+            reactionSkullCount: 0,
+            commentCount: 0,
+            repliesCount: 0,
+            repostCount: 0,
+            impressionsCount: 1,
+            createdAt: cData.created_at,
+            userReactions: {}
+          };
+        }
+      } else {
+        // Look up by clean ref in recent active posts
+        const { data: recentPosts } = await supabase
+          .from('banter_posts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (recentPosts) {
+          const matched = recentPosts.find((p: any) => getCleanMessageRef(p.id) === resolvedId || p.id === resolvedId);
+          if (matched) {
+            this.registerPostRef(matched.id, resolvedId);
+            return this.mapDatabaseRowToPost(matched, {}, devId);
+          }
+        }
       }
     } catch {
       // offline safe
@@ -1283,14 +734,11 @@ export class BanterService {
       {}
     );
 
-    const seededPosts = SEEDED_BANTER_POSTS;
-
     try {
       let query = supabase
         .from('banter_posts')
         .select('*')
-        .eq('status', 'active')
-        .is('parent_id', null);
+        .eq('status', 'active');
 
       if (matchId) {
         query = query.eq('match_id', matchId);
@@ -1326,16 +774,12 @@ export class BanterService {
           .filter((d: any) => !isTestPost(d))
           .map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
 
-        // Merge local posts and seeded posts that are not in database yet
+        // Merge local posts that are not in database yet
         const unSyncedLocal = this.localPosts.filter(
           (lp) => !lp.parentId && !posts.some((p) => p.id === lp.id) && !isTestPost(lp)
         );
-        const unSyncedSeeded = seededPosts.filter(
-          (sp) => (!sp.parentId || sp.depth === 0) && !posts.some((p) => p.id === sp.id) && !isTestPost(sp)
-        );
 
-        // Sync polls in background for un-synced local and seeded posts without blocking message rendering
-        const unSyncedPollIds = [...unSyncedLocal, ...unSyncedSeeded].map((p) => p.pollId).filter(Boolean) as string[];
+        const unSyncedPollIds = unSyncedLocal.map((p) => p.pollId).filter(Boolean) as string[];
         if (unSyncedPollIds.length > 0) {
           void this.syncPollsForDevice(unSyncedPollIds, devId).catch(() => {});
         }
@@ -1344,12 +788,8 @@ export class BanterService {
           ...p,
           poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined
         }));
-        const syncedUnSyncedSeeded = unSyncedSeeded.map((p) => ({
-          ...p,
-          poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined
-        }));
 
-        const combined = [...syncedUnSyncedLocal, ...posts, ...syncedUnSyncedSeeded];
+        const combined = [...syncedUnSyncedLocal, ...posts];
 
         const filtered = applyBanterFilter(combined, filter);
         if (filtered.length > 0) {
@@ -1364,8 +804,8 @@ export class BanterService {
       // offline fallback
     }
 
-    // Combine local user root posts + seeded root posts
-    const allRoot = [...this.localPosts, ...seededPosts].filter(p => (!p.parentId || p.depth === 0) && !isTestPost(p));
+    // Combine local user root posts
+    const allRoot = this.localPosts.filter(p => (!p.parentId || p.depth === 0) && !isTestPost(p));
     let all = allRoot;
     if (matchId) {
       all = all.filter(p => p.matchId === matchId);
@@ -1419,14 +859,14 @@ export class BanterService {
       }
     }
 
-    // Section Load: Only load direct replies for this thread from banter_posts
+    // Section Load: Load direct replies for this thread from banter_comments in database
     let replies: BanterPost[] = [];
 
     try {
       const { data, error } = await supabase
-        .from('banter_posts')
+        .from('banter_comments')
         .select('*')
-        .or(`root_id.eq.${postId},parent_id.eq.${postId}`)
+        .eq('post_id', postId)
         .eq('status', 'active')
         .order('created_at', { ascending: true })
         .limit(100);
@@ -1434,20 +874,48 @@ export class BanterService {
       if (!error && data && data.length > 0) {
         replies = data
           .filter((d: any) => !isTestPost(d))
-          .map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
+          .map((d: any) => {
+            const parsedMedia = parseMediaFromContent(d.content || '');
+            let aType = d.author_type || 'user';
+            let aBadge = d.author_badge;
+            if (aType === 'coach' || (aBadge || '').toLowerCase().includes('coach')) {
+              aType = 'coach';
+            }
+            return {
+              id: d.id,
+              parentId: d.post_id,
+              rootId: d.post_id,
+              depth: 1,
+              userId: d.device_id,
+              authorDeviceId: d.device_id,
+              author_device_id: d.device_id,
+              authorHandle: d.author_handle || 'Fanatic',
+              authorName: (d.author_handle || 'Fanatic').split(' #')[0],
+              authorType: aType,
+              authorBadge: aBadge,
+              content: parsedMedia.cleanContent || d.content,
+              mediaUrls: parsedMedia.mediaUrls,
+              mediaType: parsedMedia.mediaType,
+              imageUrl: parsedMedia.mediaUrls[0] || undefined,
+              sourceType: 'user' as const,
+              reactionFireCount: 0,
+              reactionClownCount: 0,
+              reactionSkullCount: 0,
+              commentCount: 0,
+              repliesCount: 0,
+              repostCount: 0,
+              impressionsCount: 1,
+              viewsCount: 1,
+              createdAt: d.created_at,
+              userReactions: userReactions[d.id] || {}
+            };
+          });
       }
     } catch {
       // offline safe
     }
 
-    // Include seeded and local replies directly attached to this post
-    const seededReplies = SEEDED_BANTER_POSTS
-      .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id) && !isTestPost(p))
-      .map((p) => ({
-        ...p,
-        userReactions: userReactions[p.id] || {}
-      }));
-
+    // Include local replies directly attached to this post (not yet in remote DB)
     const localReplies = this.localPosts
       .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id) && !isTestPost(p))
       .map((p) => ({
@@ -1455,7 +923,7 @@ export class BanterService {
         userReactions: userReactions[p.id] || {}
       }));
 
-    replies = [...replies, ...seededReplies, ...localReplies];
+    replies = [...replies, ...localReplies];
 
     // Collect poll IDs from active post, ancestry, and only fetched replies (avoid N+1)
     const threadPollIds: string[] = [];
@@ -1641,10 +1109,12 @@ export class BanterService {
       this.localPosts = [replyPost, ...this.localPosts];
       setStoredItem('egerscore_local_banter_posts', this.localPosts);
 
-      // Persist reply to backend in background via Promise
-      this.persistReplyToBackend(replyPost).catch((err) => {
+      // Persist reply to backend and await persistence
+      try {
+        await this.persistReplyToBackend(replyPost);
+      } catch (err) {
         console.warn('Backend reply persist deferred:', err);
-      });
+      }
 
       return replyPost;
     }
@@ -1690,9 +1160,11 @@ export class BanterService {
       userReactions: {}
     };
 
-    // Optimistically update local array
+    // Optimistically update local array and cache
     this.localPosts = [newPost, ...this.localPosts];
     setStoredItem('egerscore_local_banter_posts', this.localPosts);
+    const existingCache = this.getCachedMainPosts('all', newPost.matchId) || [];
+    this.setCachedMainPosts('all', newPost.matchId, [newPost, ...existingCache.filter(p => p.id !== newPost.id)]);
 
     // Persist to Supabase
     try {
@@ -1839,38 +1311,62 @@ export class BanterService {
 
   private async persistPostToBackend(post: BanterPost, poll?: BanterPoll | null): Promise<void> {
     try {
-      const session = getActiveSessionProfile();
-      const devId = post.authorDeviceId || session?.deviceId || getOrCreatePermanentDeviceId();
-      const uid = post.uid || session?.uid || `usr_${devId.slice(0, 8)}_${Date.now().toString(36)}`;
+      let formattedContent = post.content || '';
+      if (post.mediaUrls && post.mediaUrls.length > 0) {
+        const tag = post.mediaType === 'VIDEO' ? 'video' : 'image';
+        post.mediaUrls.forEach((url) => {
+          if (!formattedContent.includes(url)) {
+            formattedContent = `${formattedContent} [media:${tag}:${url}]`.trim();
+          }
+        });
+      }
 
-      const targetPoll = poll || post.poll;
-      const pollId = targetPoll?.id || post.pollId || null;
+      // 1. Try server-side API first (reliable backend insertion with service role)
+      try {
+        const res = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: post.id,
+            content: formattedContent,
+            authorHandle: post.authorHandle,
+            authorType: post.authorType || 'user',
+            authorBadge: post.authorBadge,
+            matchId: post.matchId || null,
+            leagueId: post.leagueId || null,
+            mediaUrls: post.mediaUrls,
+            mediaType: post.mediaType
+          })
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.post?.id) {
+            post.id = json.post.id;
+            return;
+          }
+        }
+      } catch {
+        // Fallback to client insert
+      }
+
+      // 2. Direct Supabase insert into banter_posts with valid columns only
+      const validAuthorTypes = ['user', 'journalist', 'admin', 'seed'];
+      const dbAuthorType = validAuthorTypes.includes(post.authorType) ? post.authorType : 'user';
+      const dbBadge = post.authorType === 'coach' ? (post.authorBadge || 'HEAD COACH') : post.authorBadge;
 
       const payload: Record<string, any> = {
-        root_id: (post.rootId && post.rootId !== post.id) ? post.rootId : (post.parentId || null),
-        parent_id: post.parentId || null,
-        uid,
-        author_device_id: devId,
-        author_name: post.authorName,
-        author_handle: post.authorHandle,
-        author_avatar: post.authorAvatar,
-        content: post.content,
-        media_type: post.mediaType || 'NONE',
+        author_handle: post.authorHandle || 'Fanatic',
+        author_type: dbAuthorType,
+        author_badge: dbBadge || null,
+        content: formattedContent,
         match_id: post.matchId || null,
         league_id: post.leagueId || null,
-        status: 'active',
-        poll_id: pollId
+        source_type: post.sourceType || 'user',
+        status: 'active'
       };
 
       if (/^[0-9a-f-]{36}$/i.test(post.id)) {
         payload.id = post.id;
-      }
-      if (post.mediaUrls && post.mediaUrls.length > 0) {
-        payload.media_urls = post.mediaUrls;
-      }
-      if (post.taggedTeamId) {
-        payload.tagged_team_id = post.taggedTeamId;
-        payload.tagged_team_name = post.taggedTeamName;
       }
 
       const { data, error } = await supabase
@@ -1901,7 +1397,7 @@ export class BanterService {
         return;
       }
 
-      // Fallback to RPC if direct insert fails
+      // 3. Fallback to RPC if direct insert fails
       const creds = await getDeviceCredentials();
       const devRowId = await anonymousIdentityService.ensureDeviceRegistered();
       const effectiveDeviceId = creds.deviceId || devRowId;
@@ -1921,7 +1417,7 @@ export class BanterService {
           p_match_id: post.matchId || null,
           p_league_id: post.leagueId || null,
           p_author_handle: post.authorHandle,
-          p_content: post.content
+          p_content: formattedContent
         });
 
         if (rpcData) {
@@ -1937,30 +1433,60 @@ export class BanterService {
   private async persistReplyToBackend(reply: BanterPost): Promise<void> {
     try {
       if (!reply.parentId) return;
-      const session = getActiveSessionProfile();
-      const devId = reply.authorDeviceId || session?.deviceId || getOrCreatePermanentDeviceId();
-      const uid = reply.uid || session?.uid || `usr_${devId.slice(0, 8)}_${Date.now().toString(36)}`;
 
-      const payload: Record<string, any> = {
-        root_id: reply.rootId || reply.parentId,
-        parent_id: reply.parentId,
-        uid,
-        author_device_id: devId,
-        author_name: reply.authorName,
-        author_handle: reply.authorHandle,
-        author_avatar: reply.authorAvatar,
-        content: reply.content,
-        media_type: reply.mediaType || 'NONE',
+      let formattedContent = reply.content || '';
+      if (reply.mediaUrls && reply.mediaUrls.length > 0) {
+        const tag = reply.mediaType === 'VIDEO' ? 'video' : 'image';
+        reply.mediaUrls.forEach((url) => {
+          if (!formattedContent.includes(url)) {
+            formattedContent = `${formattedContent} [media:${tag}:${url}]`.trim();
+          }
+        });
+      }
+
+      // 1. Try server-side API first (reliable backend insertion into banter_comments)
+      try {
+        const res = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: reply.id,
+            parentId: reply.parentId,
+            content: formattedContent,
+            authorHandle: reply.authorHandle,
+            authorType: reply.authorType || 'user',
+            authorBadge: reply.authorBadge,
+            mediaUrls: reply.mediaUrls,
+            mediaType: reply.mediaType
+          })
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.reply?.id) {
+            reply.id = json.reply.id;
+            return;
+          }
+        }
+      } catch {
+        // Fallback to client insert
+      }
+
+      // 2. Direct Supabase insert into banter_comments
+      const commentPayload: any = {
+        post_id: reply.parentId,
+        author_handle: reply.authorHandle || 'Fanatic',
+        author_type: reply.authorType || 'user',
+        content: formattedContent,
         status: 'active'
       };
 
       if (/^[0-9a-f-]{36}$/i.test(reply.id)) {
-        payload.id = reply.id;
+        commentPayload.id = reply.id;
       }
 
       const { data, error } = await supabase
-        .from('banter_posts')
-        .insert([payload])
+        .from('banter_comments')
+        .insert([commentPayload])
         .select()
         .single();
 
@@ -1969,7 +1495,7 @@ export class BanterService {
         return;
       }
 
-      // Fallback to RPC if direct insert fails
+      // 3. Fallback to RPC if direct insert fails
       const creds = await getDeviceCredentials();
       const devRowId = await anonymousIdentityService.ensureDeviceRegistered();
       const effectiveDeviceId = creds.deviceId || devRowId;
@@ -1987,7 +1513,7 @@ export class BanterService {
           p_secret: creds.secret,
           p_post_id: reply.parentId,
           p_author_handle: reply.authorHandle,
-          p_content: reply.content
+          p_content: formattedContent
         });
 
         if (rpcData) {
@@ -2032,11 +1558,6 @@ export class BanterService {
   }
 
   public async fetchComments(postId: string): Promise<BanterComment[]> {
-    if (usesLocalFictionalSlate()) {
-      const seeded = fictionalComments(postId);
-      return getStoredItem<BanterComment[]>(`egerscore_comments_${postId}`, seeded);
-    }
-
     try {
       const { data, error } = await supabase
         .from('banter_comments')
@@ -2047,30 +1568,24 @@ export class BanterService {
         .range(0, 49);
 
       if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
-          id: d.id,
-          postId: d.post_id,
-          authorHandle: d.author_handle,
-          authorType: d.author_type || 'user',
-          authorBadge: d.author_badge,
-          content: d.content,
-          createdAt: d.created_at
-        }));
+        return data.map((d: any) => {
+          const parsedMedia = parseMediaFromContent(d.content || '');
+          return {
+            id: d.id,
+            postId: d.post_id,
+            authorHandle: d.author_handle || 'Fanatic',
+            authorType: d.author_type || 'user',
+            authorBadge: d.author_badge,
+            content: parsedMedia.cleanContent || d.content,
+            createdAt: d.created_at
+          };
+        });
       }
     } catch {
       // offline fallback
     }
 
-    const localComments = getStoredItem<BanterComment[]>(`egerscore_comments_${postId}`, [
-      {
-        id: `c-seed-${postId}-1`,
-        postId,
-        authorHandle: 'East Stand #09',
-        authorType: 'user',
-        content: 'Spot on mate! Couldn’t agree more.',
-        createdAt: new Date(Date.now() - 120000).toISOString()
-      }
-    ]);
+    const localComments = getStoredItem<BanterComment[]>(`egerscore_comments_${postId}`, []);
     return localComments;
   }
 
@@ -2083,7 +1598,7 @@ export class BanterService {
 
     const identity = anonymousIdentityService.getIdentity();
     const comment: BanterComment = {
-      id: `comment-${Date.now()}`,
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `comment-${Date.now()}`,
       postId,
       authorHandle: identity.publicHandle,
       authorType: 'user',
@@ -2094,20 +1609,23 @@ export class BanterService {
     const existing = getStoredItem<BanterComment[]>(`egerscore_comments_${postId}`, []);
     setStoredItem(`egerscore_comments_${postId}`, [...existing, comment]);
 
-    // Persist to backend asynchronously via Promise
-    this.persistReplyToBackend({
-      ...comment,
-      parentId: postId
-    } as any).catch(() => {});
+    // Persist to backend and await
+    try {
+      await this.persistReplyToBackend({
+        ...comment,
+        parentId: postId
+      } as any);
+    } catch (err) {
+      console.warn('Comment persist deferred:', err);
+    }
 
     return comment;
   }
 
   private mapDatabaseRowToPost(d: any, userReactions: Record<string, any> = {}, deviceId?: string): BanterPost {
-    const seededMatch = SEEDED_BANTER_POSTS.find((p) => p.id === d.id);
-    let authorType = seededMatch?.authorType || d.author_type || 'user';
-    let authorBadge = seededMatch?.authorBadge || d.author_badge;
-    const authorHandle = seededMatch?.authorHandle || d.author_handle || 'Fanatic';
+    let authorType = d.author_type || 'user';
+    let authorBadge = d.author_badge;
+    const authorHandle = d.author_handle || 'Fanatic';
 
     if (
       authorType === 'coach' ||
@@ -2115,13 +1633,15 @@ export class BanterService {
       authorHandle.toLowerCase().includes('coach')
     ) {
       authorType = 'coach';
-      authorBadge = formatCoachTag(seededMatch?.taggedTeamName || d.tagged_team_name, authorBadge);
+      authorBadge = formatCoachTag(d.tagged_team_name, authorBadge);
     }
 
-    const mediaUrls = seededMatch?.mediaUrls || d.media_urls || (d.image_url ? [d.image_url] : []);
-    const mediaType = seededMatch?.mediaType || d.media_type || (mediaUrls.length > 0 ? 'IMAGE' : 'NONE');
-    const pollId = seededMatch?.pollId || d.poll_id || null;
-    let poll = seededMatch?.poll || (pollId ? this.getPollById(pollId) : undefined);
+    const parsedMedia = parseMediaFromContent(d.content || '');
+    const cleanContent = parsedMedia.cleanContent || d.content;
+    const mediaUrls = d.media_urls || (parsedMedia.mediaUrls.length > 0 ? parsedMedia.mediaUrls : (d.image_url ? [d.image_url] : []));
+    const mediaType = d.media_type || (parsedMedia.mediaType !== 'NONE' ? parsedMedia.mediaType : (mediaUrls.length > 1 ? 'DUAL_IMAGE' : (mediaUrls.length === 1 ? 'IMAGE' : 'NONE')));
+    const pollId = d.poll_id || null;
+    let poll = pollId ? this.getPollById(pollId) : undefined;
     if (poll && deviceId && !poll.voters[deviceId]) {
       const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(`egerscore_poll_voted_${poll.id}`) : null;
       if (stored) {
@@ -2144,15 +1664,15 @@ export class BanterService {
       matchId: d.match_id,
       leagueId: d.league_id,
       authorHandle,
-      authorName: seededMatch?.authorName || d.author_name || authorHandle.split(' #')[0],
+      authorName: d.author_name || authorHandle.split(' #')[0],
       authorAvatar: d.author_avatar,
       authorType,
       authorBadge,
-      content: d.content,
+      content: cleanContent,
       mediaUrls,
       mediaType,
-      imageUrl: seededMatch?.imageUrl || mediaUrls[0] || d.image_url,
-      sourceType: seededMatch?.sourceType || d.source_type || 'user',
+      imageUrl: mediaUrls[0] || d.image_url,
+      sourceType: d.source_type || 'user',
       likesCount: d.likes_count || d.reaction_fire_count || 0,
       repliesCount: d.replies_count || d.comment_count || 0,
       repostsCount: d.reposts_count || Math.floor(((d.reaction_fire_count || 0) + 4) * 1.3),
@@ -2161,13 +1681,13 @@ export class BanterService {
       reactionSkullCount: d.reaction_skull_count || 0,
       commentCount: d.comment_count || 0,
       repostCount: d.repost_count || Math.floor(((d.reaction_fire_count || 0) + 4) * 1.3),
-      isTrending: Boolean(d.is_trending || seededMatch?.isTrending),
+      isTrending: Boolean(d.is_trending),
       impressions: d.impressions ?? d.impressions_count ?? Math.min(1500, Math.max(500, 500 + ((d.reaction_fire_count || 0) * 8))),
       impressionsCount: d.impressions ?? d.impressions_count ?? Math.min(1500, Math.max(500, 500 + ((d.reaction_fire_count || 0) * 8))),
       pollId,
       poll: poll || undefined,
-      taggedTeamId: seededMatch?.taggedTeamId || d.tagged_team_id || null,
-      taggedTeamName: seededMatch?.taggedTeamName || d.tagged_team_name || null,
+      taggedTeamId: d.tagged_team_id || null,
+      taggedTeamName: d.tagged_team_name || null,
       uid: d.uid || null,
       authorDeviceId: d.author_device_id || d.device_id || null,
       author_device_id: d.author_device_id || d.device_id || null,
@@ -2189,14 +1709,8 @@ export class BanterService {
         .select('*')
         .eq('status', 'active');
 
-      if (teamId && teamName) {
-        query = query.or(`tagged_team_id.eq.${teamId},tagged_team_name.ilike.%${teamName}%`);
-      } else if (teamId) {
-        query = query.eq('tagged_team_id', teamId);
-      } else if (teamName) {
-        query = query.ilike('tagged_team_name', `%${teamName}%`);
-      } else {
-        query = query.or('tagged_team_name.not.is.null,content.ilike.%@%');
+      if (teamName) {
+        query = query.or(`content.ilike.%@${teamName}%,content.ilike.%${teamName}%,author_handle.ilike.%${teamName}%`);
       }
 
       const { data, error } = await query
@@ -2205,27 +1719,17 @@ export class BanterService {
 
       if (!error && data && data.length > 0) {
         const posts = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
-        const pollIds = posts.filter(p => p.pollId).map(p => p.pollId as string);
-        if (pollIds.length > 0) {
-          await this.syncPollsForDevice(pollIds, devId);
-          posts.forEach(p => {
-            if (p.pollId) p.poll = this.getPollById(p.pollId) || p.poll;
-          });
-        }
         return posts;
       }
     } catch {
       // offline fallback
     }
 
-    // Local / seeded fallback
-    const all = [...this.localPosts, ...SEEDED_BANTER_POSTS];
+    const all = this.localPosts;
     const normalizedName = (teamName || '').toLowerCase();
     return all.filter(p => {
-      if (teamId && p.taggedTeamId && p.taggedTeamId === teamId) return true;
-      if (teamName && p.taggedTeamName && p.taggedTeamName.toLowerCase().includes(normalizedName)) return true;
       if (teamName && p.content.toLowerCase().includes(`@${normalizedName}`)) return true;
-      if (!teamId && !teamName) return Boolean(p.taggedTeamId || p.taggedTeamName || p.content.includes('@'));
+      if (teamName && p.content.toLowerCase().includes(normalizedName)) return true;
       return false;
     });
   }

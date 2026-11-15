@@ -18,8 +18,8 @@ const env = (typeof import.meta !== 'undefined' && (import.meta as any).env)
   || {};
 
 export const config: AppConfig = {
-  supabaseUrl: (env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321').trim(),
-  supabaseAnonKey: (env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0').trim(),
+  supabaseUrl: ((typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || env.VITE_SUPABASE_URL || 'https://tdfiodqlzptaruhivapj.supabase.co').trim(),
+  supabaseAnonKey: ((typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) || env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_R8MgdxmLXhHdmcE8cwJADw_aLIplyk6').trim(),
   isProduction: env.PROD === 'true' || env.PROD === true || false,
   isDevelopment: env.DEV === 'true' || env.DEV === true || true,
   enableAuditLogs: true,

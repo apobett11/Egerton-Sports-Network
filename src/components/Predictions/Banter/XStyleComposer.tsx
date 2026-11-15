@@ -121,7 +121,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   onPostSuccess
 }) => {
   const { profile } = useBanterSession();
-  const [isExpanded, setIsExpanded] = useState(Boolean(isReply || autoFocus));
+  const [isExpanded, setIsExpanded] = useState(true);
   const [content, setContent] = useState('');
   const [mediaPreviews, setMediaPreviews] = useState<Array<{ url: string; type: 'image' | 'video'; duration?: number }>>([]);
   const [showPollBuilder, setShowPollBuilder] = useState(false);
@@ -274,7 +274,11 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
           return;
         }
 
-        const previewUrl = URL.createObjectURL(file);
+        const previewUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
         newPreviews.push({ url: previewUrl, type: 'video', duration: validation.duration });
       } else if (file.type.startsWith('image/')) {
         if (file.size > 5 * 1024 * 1024) {
