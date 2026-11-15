@@ -1409,7 +1409,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                     </span>
                   </div>
 
-                  {/* Confirmation Modal to Leave Banter Feed */}
+                  {/* Confirmation Modal to Leave Sports News and Articles Page */}
                   {showLeaveBanterPrompt && (
                     <div
                       role="dialog"
@@ -1423,9 +1423,9 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                             <AlertCircle className="h-5 w-5" />
                           </div>
                           <div>
-                            <h3 className="text-base font-bold text-white">Leave Banter?</h3>
+                            <h3 className="text-base font-bold text-white">Leave "Sports News and Articles" page?</h3>
                             <p className="text-xs text-zinc-400 mt-0.5">
-                              Are you sure you want to leave the live banter feed?
+                              Are you sure you want to leave the sports news and articles page?
                             </p>
                           </div>
                         </div>

@@ -162,6 +162,7 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
   const totalVotes = Math.max(poll.totalVotes || 0, hasVoted ? 1 : 0);
 
   const handleVote = async (e: React.MouseEvent, optionId: number) => {
+    e.preventDefault();
     e.stopPropagation();
     if (hasVoted || isVoting) return;
 
@@ -256,6 +257,8 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
 
   return (
     <div
+      data-poll-widget
+      data-testid="poll-widget"
       onClick={(e) => e.stopPropagation()}
       className="my-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3.5 space-y-2.5 max-w-full"
     >
@@ -293,7 +296,10 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                 // Post-vote State: Highlighted with blue border if selected
                 <button
                   type="button"
-                  onClick={() => setExpandedRepliesOption(prev => prev === opt.id ? null : opt.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpandedRepliesOption(prev => prev === opt.id ? null : opt.id);
+                  }}
                   className={`w-full text-left relative overflow-hidden rounded-xl p-2.5 flex items-center justify-between cursor-pointer transition-all ${
                     isUserPick
                       ? 'border-2 border-[#1d9bf0] bg-zinc-900 shadow-md ring-2 ring-[#1d9bf0]/20'
@@ -335,7 +341,10 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                 <button
                   type="button"
                   disabled={isVoting}
-                  onClick={(e) => handleVote(e, opt.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleVote(e, opt.id);
+                  }}
                   className="w-full text-left px-3.5 py-2.5 rounded-xl border border-sky-500/30 hover:border-sky-500 hover:bg-sky-500/10 text-xs font-bold text-sky-400 transition-all cursor-pointer active:scale-[0.99] flex items-center justify-between"
                 >
                   <span className="truncate">{opt.text}</span>
@@ -348,6 +357,7 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                 <div
                   className="rounded-xl border-2 border-[#1d9bf0] bg-zinc-900/90 p-3 shadow-lg animate-fadeIn space-y-2.5"
                   data-testid="poll-inline-reply-container"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1.5">
@@ -356,7 +366,10 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                     </span>
                     <button
                       type="button"
-                      onClick={() => setActiveReplyOptionId(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveReplyOptionId(null);
+                      }}
                       className="text-[10px] text-zinc-400 hover:text-white px-2 py-0.5 rounded hover:bg-zinc-800 transition cursor-pointer"
                       title="Skip reply"
                     >
@@ -406,7 +419,10 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
 
               {/* Option replies and user's saved reason on click toggle */}
               {hasVoted && showOptionReplies && (
-                <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-2.5 shadow-md animate-fadeIn space-y-2">
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-2.5 shadow-md animate-fadeIn space-y-2"
+                >
                   <div className="flex items-center justify-between text-xs font-bold text-zinc-300">
                     <span className="flex items-center gap-1.5">
                       <MessageCircle className="h-3.5 w-3.5 text-sky-400" />
@@ -414,7 +430,10 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                     </span>
                     <button
                       type="button"
-                      onClick={() => setExpandedRepliesOption(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedRepliesOption(null);
+                      }}
                       className="text-[10px] text-zinc-500 hover:text-white cursor-pointer px-1.5 py-0.5 rounded hover:bg-zinc-800 transition"
                     >
                       Hide

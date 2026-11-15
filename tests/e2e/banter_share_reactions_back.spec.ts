@@ -26,7 +26,7 @@ test.describe('Banter Feed: Back Button, Exit Prompt, Consolidated Reactions & S
     // Verify modal is shown
     const leaveModal = page.locator('[data-testid="leave-banter-modal"]');
     await expect(leaveModal).toBeVisible();
-    await expect(leaveModal.locator('text=Leave Banter?')).toBeVisible();
+    await expect(leaveModal.locator('text=Leave "Sports News and Articles" page?')).toBeVisible();
 
     // Click Stay
     const stayBtn = page.locator('[data-testid="cancel-leave-banter-btn"]');

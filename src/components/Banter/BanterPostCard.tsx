@@ -129,6 +129,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
       const target = e.target as HTMLElement | null;
       if (
         !target ||
+        !target.isConnected ||
         target.tagName === 'IMG' ||
         target.tagName === 'VIDEO' ||
         target.tagName === 'BUTTON' ||
@@ -137,12 +138,21 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         target.closest('a') ||
         target.closest('input') ||
         target.closest('textarea') ||
+        target.closest('form') ||
         target.closest('img') ||
         target.closest('video') ||
         target.closest('[role="dialog"]') ||
+        target.closest('[role="toolbar"]') ||
         target.closest('[title*="image"]') ||
         target.closest('[data-interactive-media]') ||
-        target.closest('[data-testid="image-lightbox-modal"]')
+        target.closest('[data-testid="image-lightbox-modal"]') ||
+        target.closest('[data-poll-widget]') ||
+        target.closest('[data-testid="poll-widget"]') ||
+        target.closest('[data-testid="poll-inline-reply-container"]') ||
+        target.closest('[data-action-buttons]') ||
+        target.closest('[data-testid="action-buttons-bar"]') ||
+        target.closest('[data-testid="emoji-reaction-trigger"]') ||
+        target.closest('[data-testid="reaction-emoji-array"]')
       ) {
         return;
       }
@@ -439,16 +449,23 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
           {/* Interactive Community Poll */}
           {post.poll && (
-            <XPollWidget
-              poll={post.poll}
-              onPollUpdated={(updated) => {
-                post.poll = updated;
-              }}
-            />
+            <div data-poll-widget onClick={(e) => e.stopPropagation()}>
+              <XPollWidget
+                poll={post.poll}
+                onPollUpdated={(updated) => {
+                  post.poll = updated;
+                }}
+              />
+            </div>
           )}
 
           {/* Action & Banter Reactions Bar */}
-          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 max-w-md">
+          <div
+            data-action-buttons
+            data-testid="action-buttons-bar"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-3 flex items-center justify-between text-xs text-zinc-500 max-w-md"
+          >
             {/* 1. Reply - Kept single non-white message bubble */}
             <button
               type="button"
@@ -592,7 +609,11 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
             })()}
 
             {/* 6. Impressions */}
-            <div className="hidden xs:flex items-center gap-1 text-zinc-500" title="Views">
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="hidden xs:flex items-center gap-1 text-zinc-500 cursor-default select-none"
+              title="Views"
+            >
               <BarChart2 className="h-3.5 w-3.5" />
               <span className="text-[11px] font-mono">{formatTwitterMetric(impressions)}</span>
             </div>
