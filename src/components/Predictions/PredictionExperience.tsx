@@ -1147,36 +1147,54 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       commentCount: 0,
       repliesCount: 0,
       repostCount: 0,
-      impressionsCount: 1,
+      impressionsCount: 24,
       createdAt: new Date().toISOString(),
-      userReactions: {}
+      userReactions: {},
+      isPending: true // Appears in blur / reduced brightness with flowing thin blue range strip
     };
 
-    // Instant optimistic render in next animation frame / tick (<16ms)
+    // Instant optimistic render in feed (<16ms)
     setBanterPosts(prev => [optimisticPost, ...prev]);
 
-    // Async backend persistence
-    await banterService.createPost({
-      id: tempId,
-      content,
-      matchId: contextMatch?.id || null,
-      matchContext: matchCtx,
-      mediaUrls,
-      mediaType,
-      poll: poll ? { id: `poll-${tempId}`, question: poll.question, options: poll.options } : undefined,
-      taggedTeamId: taggedTeam?.id || null,
-      taggedTeamName: taggedTeam?.name || null,
-      authorDeviceId: session?.deviceId,
-      uid: session?.uid,
-      authorName: session?.authorName,
-      authorHandle: session?.authorHandle,
-      authorAvatar: session?.avatarColor,
-      authorType: 'user'
-    }).then(created => {
-      setBanterPosts(prev => prev.map(p => p.id === tempId ? { ...created, poll: created.poll || optimisticPost.poll } : p));
-    }).catch(err => {
-      console.warn('Deferred backend post:', err);
-    });
+    // Request database write via dedicated function (never succeed unless DB write succeeds)
+    try {
+      const created = await banterService.writePostToDatabase({
+        id: tempId,
+        content,
+        matchId: contextMatch?.id || null,
+        matchContext: matchCtx,
+        mediaUrls,
+        mediaType,
+        poll: poll ? { id: `poll-${tempId}`, question: poll.question, options: poll.options } : undefined,
+        taggedTeamId: taggedTeam?.id || null,
+        taggedTeamName: taggedTeam?.name || null,
+        authorDeviceId: session?.deviceId || identity.deviceId,
+        uid: session?.uid,
+        authorName: session?.authorName,
+        authorHandle: session?.authorHandle,
+        authorAvatar: session?.avatarColor,
+        authorType: 'user'
+      });
+
+      // On database write success: update sender's immediately so it shows as normal post
+      setBanterPosts(prev =>
+        prev.map(p =>
+          p.id === tempId
+            ? { ...created, poll: created.poll || optimisticPost.poll, isPending: false, postError: null }
+            : p
+        )
+      );
+    } catch (err: any) {
+      console.error('Database write failed:', err);
+      // On failure: do NOT mark as success! Show failure state on the card so user knows DB write failed
+      setBanterPosts(prev =>
+        prev.map(p =>
+          p.id === tempId
+            ? { ...p, isPending: false, postError: err?.message || 'Database write failed. Post was not saved.' }
+            : p
+        )
+      );
+    }
   };
 
   const handleToggleReaction = async (postId: string, type: ReactionType) => {
@@ -1479,52 +1497,56 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                         onClearActiveTool={() => setMobileFabTool(null)}
                       />
 
-                      {/* Tab Strip with Underline Indicators */}
-                      <div className="sticky top-11 z-20">
-                        <BanterTabs
-                          activeFilter={banterFilter}
-                          onSelectFilter={setBanterFilter}
-                          activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
-                          onClearMatchContext={() => setContextMatch(null)}
-                        />
-                      </div>
+                      {/* Attached Sort Menu & Message Feed - No space between sort menu and top message */}
+                      <div className="space-y-0 rounded-2xl overflow-hidden shadow-lg border border-zinc-800/80 bg-black">
+                        {/* Tab Strip with Underline Indicators (Attached directly to top message card) */}
+                        <div className="sticky top-11 z-20">
+                          <BanterTabs
+                            activeFilter={banterFilter}
+                            onSelectFilter={setBanterFilter}
+                            activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
+                            onClearMatchContext={() => setContextMatch(null)}
+                          />
+                        </div>
 
-                      {clubBanterOnly && favouriteTeam && (
-                        <p className="text-[11px] font-bold text-amber-300 px-1">
-                          Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
-                        </p>
-                      )}
+                        {clubBanterOnly && favouriteTeam && (
+                          <div className="bg-amber-500/10 border-b border-zinc-800 px-3 py-1.5 text-[11px] font-bold text-amber-300">
+                            Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
+                          </div>
+                        )}
 
-                      {banterFilter === 'mine' ? (
-                        <TalkDashboard
-                          handle={identity.publicHandle}
-                          deviceBound={identity.bound}
-                          myPosts={banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)}
-                          likedPosts={banterPosts.filter((post) => likedIds.includes(post.id))}
-                          repostedPosts={banterPosts.filter((post) => repostedIds.includes(post.id))}
-                        />
-                      ) : (
-                        <BanterFeed
-                          posts={shownBanterPosts}
-                          isLoading={isLoadingBanter}
-                          onRefresh={loadBanter}
-                          onLoadMore={loadMoreBanter}
-                          showHot={banterFilter === 'trending'}
-                          emptyTitle={
-                            clubBanterOnly
-                              ? 'No takes about your club on this matchday.'
-                              : banterFilter === 'teams'
-                              ? 'No tagged team takes yet.'
-                              : banterFilter === 'coach'
-                              ? 'No coach dispatches yet.'
-                              : banterFilter === 'analytics'
-                              ? 'No league journal articles yet.'
-                              : banterFilter === 'banter'
-                              ? 'No banter & trolls yet.'
-                              : banterFilter === 'latest'
-                              ? 'Nothing new today.'
-                              : 'The room is quiet.'
-                          }
+                        {banterFilter === 'mine' ? (
+                          <div className="p-3">
+                            <TalkDashboard
+                              handle={identity.publicHandle}
+                              deviceBound={identity.bound}
+                              myPosts={banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)}
+                              likedPosts={banterPosts.filter((post) => likedIds.includes(post.id))}
+                              repostedPosts={banterPosts.filter((post) => repostedIds.includes(post.id))}
+                            />
+                          </div>
+                        ) : (
+                          <BanterFeed
+                            posts={shownBanterPosts}
+                            isLoading={isLoadingBanter}
+                            onRefresh={loadBanter}
+                            onLoadMore={loadMoreBanter}
+                            showHot={banterFilter === 'trending'}
+                            emptyTitle={
+                              clubBanterOnly
+                                ? 'No takes about your club on this matchday.'
+                                : banterFilter === 'teams'
+                                ? 'No tagged team takes yet.'
+                                : banterFilter === 'coach'
+                                ? 'No coach dispatches yet.'
+                                : banterFilter === 'analytics'
+                                ? 'No league journal articles yet.'
+                                : banterFilter === 'banter'
+                                ? 'No banter & trolls yet.'
+                                : banterFilter === 'latest'
+                                ? 'Nothing new today.'
+                                : 'The room is quiet.'
+                            }
                           emptyBody={
                             banterFilter === 'teams'
                               ? 'Takes tagging specific teams or leagues will appear here. Tag a team with @ or using the Tag button!'
@@ -1572,6 +1594,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           }}
                         />
                       )}
+                      </div>
                     </div>
 
                     {/* Right Discovery Sidebar (Desktop >= 1024px) */}
@@ -2135,9 +2158,10 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
             <div className="overflow-y-auto p-4 flex-1">
               <XStyleComposer
                 onPostCreated={async (content, mediaUrls, mediaType, poll, taggedTeam) => {
-                  await handleCreatePost(content, mediaUrls, mediaType, poll, taggedTeam);
+                  // User does not remain in the popup: close modal immediately
                   setIsComposeModalOpen(false);
                   setComposeModalTool(null);
+                  await handleCreatePost(content, mediaUrls, mediaType, poll, taggedTeam);
                 }}
                 authorHandle={identity.publicHandle}
                 activeTool={composeModalTool}

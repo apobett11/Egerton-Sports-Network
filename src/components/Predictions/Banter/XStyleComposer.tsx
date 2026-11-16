@@ -121,7 +121,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   onPostSuccess
 }) => {
   const { profile } = useBanterSession();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(isReply || Boolean(autoFocus) || Boolean(activeTool));
   const [content, setContent] = useState('');
   const [mediaPreviews, setMediaPreviews] = useState<Array<{ url: string; type: 'image' | 'video'; duration?: number }>>([]);
   const [showPollBuilder, setShowPollBuilder] = useState(false);
@@ -458,7 +458,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
       setPollOptions(['', '']);
       setSelectedTeam(null);
       setShowTeamDropdown(false);
-      setIsExpanded(true);
+      setIsExpanded(isReply);
 
       // Notify parent immediately for optimistic UI paint
       if (onPostCreated) {
@@ -520,7 +520,10 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
           : 'border-b border-zinc-800/80 p-3.5 sm:p-4'
       } ${!isExpanded && !isReply ? 'cursor-pointer hover:bg-white/[0.015]' : ''}`}
       onClick={() => {
-        if (!isExpanded) setIsExpanded(true);
+        if (!isExpanded) {
+          setIsExpanded(true);
+          setTimeout(() => textareaRef.current?.focus(), 60);
+        }
       }}
     >
 

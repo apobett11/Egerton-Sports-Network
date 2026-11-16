@@ -141,6 +141,8 @@ export interface BanterPost {
     clown?: boolean;
     skull?: boolean;
   };
+  isPending?: boolean;
+  postError?: string | null;
   children?: BanterPost[];
 }
 

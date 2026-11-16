@@ -7,7 +7,8 @@ import {
   Bookmark,
   Film,
   Shield,
-  Flame
+  Flame,
+  AlertCircle
 } from 'lucide-react';
 import { formatRelativeTime, formatTeamTag, getCleanMessageRef, MENTION_AND_TAG_REGEX } from '../../lib/predictions/utils';
 import { shareBanterSnapshot } from '../../lib/shareSnapshot';
@@ -124,9 +125,17 @@ function computePostEngagement(post: BanterPost) {
     }
   }
 
-  // Preserve higher persisted values if present
-  if (post.impressions && post.impressions > impressions) {
+  // Preserve database-stored metrics if present
+  if (post.impressionsCount !== undefined && post.impressionsCount !== null) {
+    impressions = post.impressionsCount;
+  } else if (post.impressions !== undefined && post.impressions !== null) {
     impressions = post.impressions;
+  }
+
+  if (post.repostCount !== undefined && post.repostCount !== null) {
+    baseReposts = post.repostCount;
+  } else if (post.repostsCount !== undefined && post.repostsCount !== null) {
+    baseReposts = post.repostsCount;
   }
 
   // Replies are strictly organic - the algorithm NEVER touches replies
@@ -174,16 +183,21 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
   // Engagement algorithm: replies are strictly organic, impressions & reposts climb gradually
   const engagement = useMemo(() => computePostEngagement(post), [post, liveTick]);
-  const impressions = engagement.impressions;
-  const [repostCount, setRepostCount] = useState(
-    post.repostCount || post.repostsCount || engagement.baseReposts
+  const impressions = post.impressionsCount ?? post.impressions ?? engagement.impressions;
+  const dbRepostCount = post.repostCount ?? post.repostsCount;
+  const [repostCount, setRepostCount] = useState<number>(
+    dbRepostCount !== undefined ? dbRepostCount : engagement.baseReposts
   );
   const [hasReposted, setHasReposted] = useState(false);
 
   // Sync repost count as baseline climbs if user has not manually toggled
   useEffect(() => {
-    if (!hasReposted && !post.repostCount && !post.repostsCount) {
-      setRepostCount(engagement.baseReposts);
+    if (!hasReposted) {
+      if (post.repostCount !== undefined || post.repostsCount !== undefined) {
+        setRepostCount(post.repostCount ?? post.repostsCount ?? 0);
+      } else {
+        setRepostCount(engagement.baseReposts);
+      }
     }
   }, [engagement.baseReposts, hasReposted, post.repostCount, post.repostsCount]);
 
@@ -286,11 +300,27 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     <article
       data-testid="banter-post-card"
       onClick={handlePostClick}
-      className={`group relative overflow-hidden px-4 py-3.5 sm:px-4 sm:py-4 transition-colors duration-150 cursor-pointer hover:bg-white/[0.02] max-w-2xl mx-auto border-b border-zinc-800/70 ${
+      className={`group relative overflow-hidden px-4 py-3.5 sm:px-4 sm:py-4 transition-all duration-300 cursor-pointer hover:bg-white/[0.02] max-w-2xl mx-auto border-b border-zinc-800/70 ${
         isHot || post.isTrending ? 'bg-amber-500/[0.02]' : ''
-      }`}
+      } ${post.isPending ? 'opacity-70 filter brightness-85 blur-[0.4px] select-none pointer-events-none' : ''}`}
     >
-      {(isHot || post.isTrending) && (
+      {/* Thin Blue Range Strip flowing across when posting */}
+      {post.isPending && (
+        <div className="banter-range-strip">
+          <div className="banter-range-strip-bar" />
+        </div>
+      )}
+
+      {post.postError && (
+        <div className="mb-2 px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <AlertCircle className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+            <span>Database write failed: {post.postError}</span>
+          </span>
+        </div>
+      )}
+
+      {(isHot || post.isTrending) && !post.isPending && (
         <div className="absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
       )}
       <div className="flex gap-3">

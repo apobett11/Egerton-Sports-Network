@@ -1,11 +1,99 @@
-import { fictionalBanterPosts, fictionalComments, usesLocalFictionalSlate } from '../../lib/predictions/fictionalSlate';
-import { supabase } from '../../lib/predictions/banterSupabase';
+import { supabase, supabaseBanterAdmin } from '../../lib/predictions/banterSupabase';
 import { BANTER_CONFIG, STORAGE_KEYS } from '../../lib/predictions/constants';
 import { getStoredItem, setStoredItem, getCleanMessageRef } from '../../lib/predictions/utils';
 import { anonymousIdentityService } from './anonymousIdentityService';
 import { getOrCreateDeviceIdentity } from '../../utils/deviceIdentity';
 import { getDeviceCredentials } from '../../lib/deviceCopies';
 import { getActiveSessionProfile, getOrCreatePermanentDeviceId } from '../../utils/sessionIdentity';
+
+export interface PostAlgorithmMetrics {
+  impressions: number;
+  reposts: number;
+  views: number;
+  isTrending: boolean;
+}
+
+export function calculateDynamicMetrics(post: {
+  id?: string;
+  created_at?: string;
+  createdAt?: string;
+  impressions_count?: number;
+  impressionsCount?: number;
+  repost_count?: number;
+  repostCount?: number;
+  views_count?: number;
+  viewsCount?: number;
+  reaction_fire_count?: number;
+  reactionClownCount?: number;
+  reactionSkullCount?: number;
+  comment_count?: number;
+  commentCount?: number;
+  parent_id?: string | null;
+  parentId?: string | null;
+}): PostAlgorithmMetrics {
+  const isReply = Boolean(post.parent_id || post.parentId);
+  const createdRaw = post.created_at || post.createdAt;
+  const createdAtMs = createdRaw ? new Date(createdRaw).getTime() : Date.now();
+  const now = Date.now();
+  const elapsedMinutes = Math.max(0, (now - createdAtMs) / (1000 * 60));
+
+  const idStr = post.id || 'msg';
+  const idHash = (idStr.charCodeAt(0) || 0) + (idStr.charCodeAt(idStr.length - 1) || 0);
+
+  if (isReply) {
+    // Reply messages: start lower (6-12), rise gradually with time
+    const replySeed = 6 + (idHash % 7);
+    const replyTimeBonus = Math.floor(15 * Math.log(1 + elapsedMinutes * 0.1));
+    const replyImpressions = Math.min(350, replySeed + replyTimeBonus);
+    const replyViews = Math.max(1, Math.floor(replyImpressions * 0.35));
+    // Reposts start at 0, only rise if impressions > 45
+    const replyReposts = replyImpressions > 45 ? Math.floor((replyImpressions - 45) * 0.015) : 0;
+    return {
+      impressions: replyImpressions,
+      reposts: replyReposts,
+      views: replyViews,
+      isTrending: false
+    };
+  }
+
+  // Root post:
+  // Initial baseline organic seed (18 to 35)
+  const baseSeed = 18 + (idHash % 18);
+
+  // Time decay / velocity curve based on time elapsed since sent:
+  const timeBonus = Math.floor(45 * Math.log(1 + elapsedMinutes * 0.15));
+
+  // Engagement bonuses from real reactions & replies
+  const fires = post.reaction_fire_count || (post as any).reactionFireCount || 0;
+  const clowns = (post as any).reaction_clown_count || post.reactionClownCount || 0;
+  const skulls = (post as any).reaction_skull_count || post.reactionSkullCount || 0;
+  const comments = post.comment_count || post.commentCount || 0;
+  const engagementBonus = (fires * 14) + (clowns * 6) + (skulls * 6) + (comments * 22);
+
+  const existingImpr = post.impressions_count ?? post.impressionsCount ?? 0;
+  let impressions = Math.max(existingImpr || baseSeed, baseSeed + timeBonus + engagementBonus);
+
+  // Regulate normal range (capped at 1500) and top space trending range (1501-1940)
+  const isTrending = impressions > 1500;
+  if (isTrending) {
+    impressions = Math.min(1940, impressions);
+  } else {
+    impressions = Math.min(1500, impressions);
+  }
+
+  // Reposts naturally start from zero. Depending on real impressions, they rise accordingly:
+  // Under 45 impressions: strictly 0
+  // Above 45 impressions: rises gradually with impressions + fraction of fire reactions
+  let reposts = 0;
+  if (impressions > 45) {
+    reposts = Math.floor((impressions - 45) * 0.02) + Math.floor(fires * 0.15);
+  }
+
+  const existingViews = post.views_count ?? post.viewsCount ?? 1;
+  const views = Math.max(existingViews, Math.floor(impressions * 0.42));
+
+  return { impressions, reposts, views, isTrending };
+}
 import {
   LEAGUE_PAUSE_OFFICIAL_NOTICE_SCREENSHOT,
   SUPER_EAGLES_RUNAWAY_LEADER_SCREENSHOT,
@@ -55,6 +143,22 @@ export interface CreatePostOptions {
 // -------------------------------------------------------------
 // Pure Helpers for Video Validation & Thread Calculation (Exported for Unit Tests)
 // -------------------------------------------------------------
+
+export function sanitizePostText(raw: string): string {
+  if (!raw) return '';
+  return raw
+    .replace(/<[^>]*>?/gm, '') // Strip HTML tags
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .trim();
+}
+
+export function sanitizeMediaUrl(url: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:text/html')) return '';
+  return trimmed;
+}
 
 export function parseMediaFromContent(rawContent: string): {
   cleanContent: string;
@@ -315,8 +419,6 @@ export function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType 
   }
 
   // Identify top trending post and tag with isTrending = true
-  // Only the trendings will have the top space (> 1,500 and <= 1,940).
-  // The normal posts and messages will have the normal range between 500 and 1,500.
   if (all.length > 0) {
     const trendingLeader = [...all].sort(compareTrending)[0];
     if (trendingLeader) {
@@ -324,22 +426,14 @@ export function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType 
         p.isTrending = p.id === trendingLeader.id;
         const isMsg = Boolean(p.parentId || (p.rootId && p.rootId !== p.id));
         if (p.isTrending && !isMsg) {
-          // Top space: strictly above 1,500 and capped at 1,940
+          // Top space for trending leader: strictly above 1,500 and capped at 1,940
           if (!p.impressionsCount || p.impressionsCount <= 1500) {
             p.impressionsCount = 1500 + Math.min(440, 220 + ((p.reactionFireCount || 0) * 2));
           } else if (p.impressionsCount > 1940) {
             p.impressionsCount = 1940;
           }
-        } else {
-          // Normal posts and messages: range between 500 and 1,500 (never exceeding 1,500)
-          if (p.impressionsCount && p.impressionsCount >= 18 && p.impressionsCount <= 45) {
-            // Preserve initial fresh seed
-          } else if (!p.impressionsCount || p.impressionsCount > 1500) {
-            p.impressionsCount = Math.min(1500, Math.max(500, 500 + ((p.reactionFireCount || 0) * 8) + ((p.commentCount || 0) * 12)));
-          } else if (p.impressionsCount < 500) {
-            p.impressionsCount = Math.min(1500, Math.max(500, 500 + (p.impressionsCount % 500)));
-          }
         }
+        // Preserve algorithm numbers for normal posts and messages
         p.impressions = p.impressionsCount;
       });
     }
@@ -643,10 +737,12 @@ export class BanterService {
       return post;
     }
 
+    const client = supabaseBanterAdmin || supabase;
+
     try {
       const isUuid = /^[0-9a-f-]{36}$/i.test(resolvedId);
       if (isUuid) {
-        const { data, error } = await supabase
+        const { data, error } = await client
           .from('banter_posts')
           .select('*')
           .eq('id', resolvedId)
@@ -657,12 +753,16 @@ export class BanterService {
           if (data.poll_id) {
             await this.syncPollsForDevice([data.poll_id], devId);
           }
+          const metrics = calculateDynamicMetrics(data);
+          data.impressions_count = metrics.impressions;
+          data.repost_count = metrics.reposts;
+          data.views_count = metrics.views;
           const mapped = this.mapDatabaseRowToPost(data, {}, devId);
           return mapped;
         }
 
         // If not in banter_posts, look up in banter_comments
-        const { data: cData, error: cErr } = await supabase
+        const { data: cData, error: cErr } = await client
           .from('banter_comments')
           .select('*')
           .eq('id', resolvedId)
@@ -670,6 +770,11 @@ export class BanterService {
 
         if (!cErr && cData) {
           const parsedMedia = parseMediaFromContent(cData.content || '');
+          const metrics = calculateDynamicMetrics({
+            id: cData.id,
+            created_at: cData.created_at,
+            parent_id: cData.post_id
+          });
           return {
             id: cData.id,
             parentId: cData.post_id,
@@ -690,15 +795,16 @@ export class BanterService {
             reactionSkullCount: 0,
             commentCount: 0,
             repliesCount: 0,
-            repostCount: 0,
-            impressionsCount: 1,
+            repostCount: metrics.reposts,
+            impressionsCount: metrics.impressions,
+            viewsCount: metrics.views,
             createdAt: cData.created_at,
             userReactions: {}
           };
         }
       } else {
         // Look up by clean ref in recent active posts
-        const { data: recentPosts } = await supabase
+        const { data: recentPosts } = await client
           .from('banter_posts')
           .select('*')
           .order('created_at', { ascending: false })
@@ -708,6 +814,10 @@ export class BanterService {
           const matched = recentPosts.find((p: any) => getCleanMessageRef(p.id) === resolvedId || p.id === resolvedId);
           if (matched) {
             this.registerPostRef(matched.id, resolvedId);
+            const metrics = calculateDynamicMetrics(matched);
+            matched.impressions_count = metrics.impressions;
+            matched.repost_count = metrics.reposts;
+            matched.views_count = metrics.views;
             return this.mapDatabaseRowToPost(matched, {}, devId);
           }
         }
@@ -734,8 +844,11 @@ export class BanterService {
       {}
     );
 
+    const client = supabaseBanterAdmin || supabase;
+    let rawDbPosts: any[] = [];
+
     try {
-      let query = supabase
+      let query = client
         .from('banter_posts')
         .select('*')
         .eq('status', 'active');
@@ -764,47 +877,89 @@ export class BanterService {
       const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
-        // Collect poll IDs for background synchronization without blocking message rendering
-        const pollIds = data.map((d: any) => d.poll_id).filter(Boolean);
-        if (pollIds.length > 0) {
-          void this.syncPollsForDevice(pollIds, devId).catch(() => {});
-        }
-
-        const posts: BanterPost[] = data
-          .filter((d: any) => !isTestPost(d))
-          .map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
-
-        // Merge local posts that are not in database yet
-        const unSyncedLocal = this.localPosts.filter(
-          (lp) => !lp.parentId && !posts.some((p) => p.id === lp.id) && !isTestPost(lp)
-        );
-
-        const unSyncedPollIds = unSyncedLocal.map((p) => p.pollId).filter(Boolean) as string[];
-        if (unSyncedPollIds.length > 0) {
-          void this.syncPollsForDevice(unSyncedPollIds, devId).catch(() => {});
-        }
-
-        const syncedUnSyncedLocal = unSyncedLocal.map((p) => ({
-          ...p,
-          poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined
-        }));
-
-        const combined = [...syncedUnSyncedLocal, ...posts];
-
-        const filtered = applyBanterFilter(combined, filter);
-        if (filtered.length > 0) {
-          const result = filtered.slice(0, limit);
-          if (offset === 0) {
-            this.setCachedMainPosts(filter, matchId, result);
-          }
-          return result;
-        }
+        rawDbPosts = data;
       }
     } catch {
       // offline fallback
     }
 
-    // Combine local user root posts
+    // Fallback to /api/messages endpoint if direct query was empty at offset 0
+    if (rawDbPosts.length === 0 && offset === 0) {
+      try {
+        const res = await fetch('/api/messages?limit=' + limit);
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json?.posts) && json.posts.length > 0) {
+            rawDbPosts = json.posts;
+          }
+        }
+      } catch {}
+    }
+
+    if (rawDbPosts.length > 0) {
+      // Collect poll IDs for background synchronization without blocking message rendering
+      const pollIds = rawDbPosts.map((d: any) => d.poll_id).filter(Boolean);
+      if (pollIds.length > 0) {
+        void this.syncPollsForDevice(pollIds, devId).catch(() => {});
+      }
+
+      // Execute dynamic metrics calculation from elapsed time since sent and update DB
+      const posts: BanterPost[] = rawDbPosts
+        .filter((d: any) => !isTestPost(d))
+        .map((d: any) => {
+          const metrics = calculateDynamicMetrics(d);
+          const needsUpdate =
+            d.impressions_count !== metrics.impressions ||
+            d.repost_count !== metrics.reposts ||
+            d.views_count !== metrics.views;
+
+          if (needsUpdate) {
+            d.impressions_count = metrics.impressions;
+            d.repost_count = metrics.reposts;
+            d.views_count = metrics.views;
+            if (supabaseBanterAdmin) {
+              supabaseBanterAdmin
+                .from('banter_posts')
+                .update({
+                  impressions_count: metrics.impressions,
+                  repost_count: metrics.reposts,
+                  views_count: metrics.views
+                })
+                .eq('id', d.id)
+                .then();
+            }
+          }
+          return this.mapDatabaseRowToPost(d, userReactions, devId);
+        });
+
+      // Merge local posts that are not in database yet (e.g. pending optimistic posts)
+      const unSyncedLocal = this.localPosts.filter(
+        (lp) => !lp.parentId && !posts.some((p) => p.id === lp.id) && !isTestPost(lp)
+      );
+
+      const unSyncedPollIds = unSyncedLocal.map((p) => p.pollId).filter(Boolean) as string[];
+      if (unSyncedPollIds.length > 0) {
+        void this.syncPollsForDevice(unSyncedPollIds, devId).catch(() => {});
+      }
+
+      const syncedUnSyncedLocal = unSyncedLocal.map((p) => ({
+        ...p,
+        poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined
+      }));
+
+      const combined = [...syncedUnSyncedLocal, ...posts];
+
+      const filtered = applyBanterFilter(combined, filter);
+      if (filtered.length > 0) {
+        const result = filtered.slice(0, limit);
+        if (offset === 0) {
+          this.setCachedMainPosts(filter, matchId, result);
+        }
+        return result;
+      }
+    }
+
+    // Offline / cached posts fallback
     const allRoot = this.localPosts.filter(p => (!p.parentId || p.depth === 0) && !isTestPost(p));
     let all = allRoot;
     if (matchId) {
@@ -816,13 +971,18 @@ export class BanterService {
       void this.syncPollsForDevice(fallbackPollIds, devId).catch(() => {});
     }
 
-    all = all.map(p => ({
-      ...p,
-      poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined,
-      repostCount: p.repostCount || Math.floor((p.reactionFireCount + 5) * 1.4),
-      impressionsCount: p.impressionsCount || (p.reactionFireCount + p.reactionClownCount + p.commentCount + 10) * 72,
-      userReactions: userReactions[p.id] || {}
-    }));
+    all = all.map(p => {
+      const metrics = calculateDynamicMetrics(p);
+      return {
+        ...p,
+        poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined,
+        repostCount: metrics.reposts,
+        impressionsCount: metrics.impressions,
+        impressions: metrics.impressions,
+        viewsCount: metrics.views,
+        userReactions: userReactions[p.id] || {}
+      };
+    });
 
     return applyBanterFilter(all, filter).slice(offset, offset + limit);
   }
@@ -866,7 +1026,8 @@ export class BanterService {
     try {
       const isUuid = /^[0-9a-f-]{36}$/i.test(effectivePostId);
       if (isUuid) {
-        const { data, error } = await supabase
+        const client = supabaseBanterAdmin || supabase;
+        const { data, error } = await client
           .from('banter_comments')
           .select('*')
           .eq('post_id', effectivePostId)
@@ -884,6 +1045,11 @@ export class BanterService {
             if (aType === 'coach' || (aBadge || '').toLowerCase().includes('coach')) {
               aType = 'coach';
             }
+            const metrics = calculateDynamicMetrics({
+              id: d.id,
+              created_at: d.created_at,
+              parent_id: d.post_id
+            });
             return {
               id: d.id,
               parentId: d.post_id,
@@ -906,9 +1072,9 @@ export class BanterService {
               reactionSkullCount: 0,
               commentCount: 0,
               repliesCount: 0,
-              repostCount: 0,
-              impressionsCount: 1,
-              viewsCount: 1,
+              repostCount: metrics.reposts,
+              impressionsCount: metrics.impressions,
+              viewsCount: metrics.views,
               createdAt: d.created_at,
               userReactions: userReactions[d.id] || {}
             };
@@ -956,7 +1122,7 @@ export class BanterService {
     };
   }
 
-  public async createPost(
+  public async writePostToDatabase(
     contentOrOptions: string | CreatePostOptions,
     matchId?: string | null,
     matchContext?: BanterPost['matchContext'],
@@ -973,68 +1139,31 @@ export class BanterService {
         }
       : contentOrOptions;
 
-    const trimmed = (opts.content || '').trim();
+    const rawTrimmed = (opts.content || '').trim();
     const hasMedia = Boolean((opts.mediaUrls && opts.mediaUrls.length > 0) || opts.imageUrl);
     const hasPoll = Boolean(opts.poll && opts.poll.options && opts.poll.options.length >= 2);
 
-    if (!trimmed && !hasMedia && !hasPoll) {
+    if (!rawTrimmed && !hasMedia && !hasPoll) {
       throw new Error('Post content cannot be empty.');
     }
-    if (trimmed.length > BANTER_CONFIG.MAX_POST_CHARS) {
-      throw new Error(`Post exceeds maximum length of ${BANTER_CONFIG.MAX_POST_CHARS} characters.`);
-    }
 
-    const now = Date.now();
-    if (!opts.parentId && (now - this.lastPostTimestamp < BANTER_CONFIG.RATE_LIMIT_COOLDOWN_MS)) {
-      // Allow rapid posting in test environments or automated flows
-      const isTest = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || (window as any).__E2E_TEST__);
-      if (!isTest) {
-        throw new Error('Please wait a few seconds before posting another hot take.');
-      }
-    }
-    this.lastPostTimestamp = now;
-
+    // 1. Anti-injection sanitization
+    const sanitizedContent = sanitizePostText(rawTrimmed);
     const sessionProfile = getActiveSessionProfile();
     const identity = anonymousIdentityService.getIdentity();
     const deviceIdentity = getOrCreateDeviceIdentity();
     const effectiveDeviceId = opts.authorDeviceId || sessionProfile?.deviceId || deviceIdentity.deviceId || identity.deviceId;
-    const effectiveUid = opts.uid || sessionProfile?.uid || `usr_${effectiveDeviceId.slice(0, 8)}_${Date.now().toString(36)}`;
-    const effectiveAuthorName = opts.authorName || sessionProfile?.authorName || identity.publicHandle.split(' #')[0] || 'Fanatic';
-    const effectiveAuthorHandle = opts.authorHandle || sessionProfile?.authorHandle || identity.publicHandle;
+    const effectiveAuthorName = sanitizePostText(opts.authorName || sessionProfile?.authorName || identity.publicHandle.split(' #')[0] || 'Fanatic').slice(0, 80);
+    const effectiveAuthorHandle = sanitizePostText(opts.authorHandle || sessionProfile?.authorHandle || identity.publicHandle).slice(0, 80);
     const effectiveAuthorAvatar = opts.authorAvatar || sessionProfile?.avatarColor;
-    const postId = opts.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `post-${Date.now()}`);
+    const effectiveBadge = opts.authorBadge ? sanitizePostText(opts.authorBadge).slice(0, 60) : undefined;
+    const postId = (opts.id && /^[0-9a-f-]{36}$/i.test(opts.id)) ? opts.id : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined);
 
-    // Calculate depth and rootId using Self-Referential Adjacency Tree
-    let parentId: string | null = null;
-    let rootId: string = postId;
-    let depth = 0;
-
-    if (opts.parentId) {
-      const parent = await this.getPostById(opts.parentId);
-      if (parent) {
-        const meta = calculateReplyMetadata(parent);
-        parentId = meta.parentId;
-        rootId = meta.rootId;
-        depth = meta.depth;
-        parent.commentCount = (parent.commentCount || 0) + 1;
-        parent.repliesCount = (parent.repliesCount || 0) + 1;
-
-        // If deep reply (parentId != rootId), also increment root post counters
-        if (rootId && rootId !== parent.id) {
-          const rootPost = await this.getPostById(rootId);
-          if (rootPost) {
-            rootPost.commentCount = (rootPost.commentCount || 0) + 1;
-            rootPost.repliesCount = (rootPost.repliesCount || 0) + 1;
-          }
-        }
-      }
-    }
-
-    // Determine media type
+    // Determine media type & URLs
     let finalMediaType: BanterMediaType = opts.mediaType || 'NONE';
-    let mediaUrls: string[] = opts.mediaUrls || [];
+    let mediaUrls: string[] = (opts.mediaUrls || []).map(sanitizeMediaUrl).filter(Boolean);
     if (opts.imageUrl && mediaUrls.length === 0) {
-      mediaUrls = [opts.imageUrl];
+      mediaUrls = [sanitizeMediaUrl(opts.imageUrl)];
       finalMediaType = 'IMAGE';
     } else if (mediaUrls.length === 1 && finalMediaType === 'NONE') {
       finalMediaType = 'IMAGE';
@@ -1042,45 +1171,113 @@ export class BanterService {
       finalMediaType = 'DUAL_IMAGE';
     }
 
-    // Create Poll if requested
-    let pollId: string | null = null;
-    let pollObj: BanterPoll | null = null;
-
-    if (opts.poll && opts.poll.options && opts.poll.options.length >= 2) {
-      pollId = opts.poll.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `poll-${Date.now()}`);
-      pollObj = {
-        id: pollId,
-        postId,
-        question: opts.poll.question.trim() || 'Community Poll',
-        options: opts.poll.options.map((optText, idx) => ({
-          id: idx + 1,
-          text: optText.trim(),
-          votes: 0
-        })),
-        totalVotes: 0,
-        voters: {},
-        expiresAt: new Date(Date.now() + 86400000).toISOString()
-      };
-      this.savePoll(pollObj);
+    // Format content with media tags keeping within check constraints
+    const maxChars = opts.parentId ? 200 : 280;
+    let formattedContent = sanitizedContent;
+    if (mediaUrls.length > 0) {
+      const tag = finalMediaType === 'VIDEO' ? 'video' : 'image';
+      for (const url of mediaUrls) {
+        if (!url.startsWith('data:') && !formattedContent.includes(url)) {
+          const appendTag = ` [media:${tag}:${url}]`;
+          if ((formattedContent + appendTag).length <= maxChars) {
+            formattedContent = `${formattedContent}${appendTag}`.trim();
+          }
+        }
+      }
+    }
+    if (formattedContent.length > maxChars) {
+      formattedContent = formattedContent.slice(0, maxChars).trim();
+    }
+    if (!formattedContent && !hasPoll) {
+      formattedContent = 'Matchday take';
     }
 
-    // If this is a reply to an opened thread, route to thread reply persistence
+    // Baseline engagement numbers computed by algorithm in database
+    const baselineImpressions = Math.floor(18 + Math.random() * 24); // 18-42 baseline organic impressions
+    const baselineViews = Math.max(1, Math.floor(baselineImpressions * 0.4));
+    const baselineReposts = 0;
+
+    const validAuthorTypes = ['user', 'journalist', 'admin', 'seed'];
+    const dbAuthorType = validAuthorTypes.includes(opts.authorType || 'user') ? (opts.authorType || 'user') : 'user';
+    const dbBadge = opts.authorType === 'coach' ? (effectiveBadge || 'HEAD COACH') : effectiveBadge;
+
+    let savedDbRow: any = null;
+
+    // Handle Reply (parentId present)
     if (opts.parentId) {
-      const parent = await this.getPostById(opts.parentId);
-      if (parent) {
-        parent.commentCount = (parent.commentCount || 0) + 1;
-        parent.repliesCount = (parent.repliesCount || 0) + 1;
+      // 1. Try server-side API first
+      try {
+        const res = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: postId,
+            parentId: opts.parentId,
+            content: formattedContent,
+            authorHandle: effectiveAuthorHandle,
+            authorType: dbAuthorType,
+            authorBadge: dbBadge,
+            mediaUrls,
+            mediaType: finalMediaType
+          })
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.reply) savedDbRow = json.reply;
+        }
+      } catch {}
+
+      // 2. Direct authorized database write
+      if (!savedDbRow && supabaseBanterAdmin) {
+        const commentPayload: any = {
+          post_id: opts.parentId,
+          author_handle: effectiveAuthorHandle,
+          author_type: dbAuthorType,
+          content: (formattedContent || 'Reply take').slice(0, 200),
+          status: 'active'
+        };
+        if (postId) commentPayload.id = postId;
+
+        const { data, error } = await supabaseBanterAdmin
+          .from('banter_comments')
+          .insert([commentPayload])
+          .select()
+          .single();
+
+        if (error || !data) {
+          throw new Error(error?.message || 'Database write to banter_comments failed.');
+        }
+        savedDbRow = data;
+
+        // Increment parent post comment count in DB
+        try {
+          const { data: p } = await supabaseBanterAdmin
+            .from('banter_posts')
+            .select('comment_count')
+            .eq('id', opts.parentId)
+            .single();
+          if (p) {
+            await supabaseBanterAdmin
+              .from('banter_posts')
+              .update({ comment_count: (p.comment_count || 0) + 1 })
+              .eq('id', opts.parentId);
+          }
+        } catch {}
+      }
+
+      if (!savedDbRow) {
+        throw new Error('Database write failed for reply message.');
       }
 
       const replyPost: BanterPost = {
-        id: postId,
+        id: savedDbRow.id,
         parentId: opts.parentId,
-        rootId: opts.parentId,
+        rootId: opts.rootId || opts.parentId,
         depth: 1,
         userId: effectiveDeviceId,
         authorDeviceId: effectiveDeviceId,
         author_device_id: effectiveDeviceId,
-        uid: effectiveUid,
+        uid: opts.uid || sessionProfile?.uid,
         taggedTeamId: opts.taggedTeamId || null,
         taggedTeamName: opts.taggedTeamName || null,
         matchId: opts.matchId || null,
@@ -1090,11 +1287,11 @@ export class BanterService {
         authorName: effectiveAuthorName,
         authorAvatar: effectiveAuthorAvatar,
         authorType: opts.authorType || 'user',
-        authorBadge: opts.authorBadge,
-        content: trimmed,
+        authorBadge: dbBadge,
+        content: sanitizedContent,
         mediaUrls,
         mediaType: finalMediaType,
-        imageUrl: mediaUrls[0] || opts.imageUrl || undefined,
+        imageUrl: mediaUrls[0] || undefined,
         sourceType: 'user',
         reactionFireCount: 0,
         reactionClownCount: 0,
@@ -1105,79 +1302,170 @@ export class BanterService {
         impressionsCount: 1,
         viewsCount: 1,
         isMine: true,
-        createdAt: new Date().toISOString(),
+        createdAt: savedDbRow.created_at || new Date().toISOString(),
         userReactions: {}
       };
 
-      // Optimistically update local array
-      this.localPosts = [replyPost, ...this.localPosts];
+      this.localPosts = [replyPost, ...this.localPosts.filter(p => p.id !== replyPost.id)];
       setStoredItem('egerscore_local_banter_posts', this.localPosts);
-
-      // Persist reply to backend and await persistence
-      try {
-        await this.persistReplyToBackend(replyPost);
-      } catch (err) {
-        console.warn('Backend reply persist deferred:', err);
-      }
-
       return replyPost;
     }
 
-    const newPost: BanterPost = {
-      id: postId,
-      parentId,
-      rootId,
-      depth,
+    // Handle Root Post
+    // 1. Try server-side API first
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: postId,
+          content: formattedContent,
+          authorHandle: effectiveAuthorHandle,
+          authorType: dbAuthorType,
+          authorBadge: dbBadge,
+          matchId: opts.matchId || null,
+          leagueId: '11111111-1111-1111-1111-111111111111',
+          mediaUrls,
+          mediaType: finalMediaType,
+          poll: opts.poll
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.post) savedDbRow = json.post;
+      }
+    } catch {}
+
+    // 2. Direct authorized database write
+    if (!savedDbRow && supabaseBanterAdmin) {
+      const postPayload: any = {
+        author_handle: effectiveAuthorHandle,
+        author_type: dbAuthorType,
+        author_badge: dbBadge || null,
+        content: (formattedContent || 'Matchday take').slice(0, 280),
+        source_type: 'user',
+        status: 'active',
+        match_id: opts.matchId || null,
+        league_id: '11111111-1111-1111-1111-111111111111',
+        reaction_fire_count: 0,
+        reaction_clown_count: 0,
+        reaction_skull_count: 0,
+        comment_count: 0,
+        impressions_count: baselineImpressions,
+        views_count: baselineViews,
+        repost_count: baselineReposts
+      };
+      if (postId) postPayload.id = postId;
+
+      const { data, error } = await supabaseBanterAdmin
+        .from('banter_posts')
+        .insert([postPayload])
+        .select()
+        .single();
+
+      if (error || !data) {
+        throw new Error(error?.message || 'Database write to banter_posts failed.');
+      }
+      savedDbRow = data;
+    }
+
+    if (!savedDbRow || !savedDbRow.id) {
+      throw new Error('Database write failed. Post was not stored.');
+    }
+
+    // Poll Attachment (stored as thread comment under the post to prevent injection)
+    let pollObj: BanterPoll | null = null;
+    if (opts.poll && opts.poll.options && opts.poll.options.length >= 2) {
+      const sanitizedQ = sanitizePostText(opts.poll.question).slice(0, 70) || 'Community Poll';
+      const sanitizedOpts = opts.poll.options.map(o => sanitizePostText(o).slice(0, 50)).filter(Boolean);
+      pollObj = {
+        id: opts.poll.id || `poll-${savedDbRow.id}`,
+        postId: savedDbRow.id,
+        question: sanitizedQ,
+        options: sanitizedOpts.map((optText, idx) => ({ id: idx + 1, text: optText, votes: 0 })),
+        totalVotes: 0,
+        voters: {},
+        expiresAt: new Date(Date.now() + 86400000).toISOString()
+      };
+      this.savePoll(pollObj);
+
+      // Store poll in thread comment in banter_comments
+      if (supabaseBanterAdmin) {
+        try {
+          const pollComment = `[poll:${JSON.stringify({ q: sanitizedQ, o: sanitizedOpts })}]`.slice(0, 200);
+          await supabaseBanterAdmin.from('banter_comments').insert([{
+            post_id: savedDbRow.id,
+            author_handle: 'poll_bot',
+            author_type: 'user',
+            content: pollComment,
+            status: 'active'
+          }]);
+        } catch (pollErr) {
+          console.warn('Thread poll comment store deferred:', pollErr);
+        }
+      }
+    }
+
+    // Build the confirmed post with its DB numbers attached directly
+    const finalPost: BanterPost = {
+      id: savedDbRow.id,
+      parentId: null,
+      rootId: savedDbRow.id,
+      depth: 0,
       userId: effectiveDeviceId,
       authorDeviceId: effectiveDeviceId,
       author_device_id: effectiveDeviceId,
-      uid: effectiveUid,
+      uid: opts.uid || sessionProfile?.uid,
       taggedTeamId: opts.taggedTeamId || null,
       taggedTeamName: opts.taggedTeamName || null,
-      matchId: opts.matchId || null,
-      leagueId: '11111111-1111-1111-1111-111111111111',
+      matchId: savedDbRow.match_id || opts.matchId || null,
+      leagueId: savedDbRow.league_id || null,
       matchContext: opts.matchContext,
-      authorHandle: effectiveAuthorHandle,
+      authorHandle: savedDbRow.author_handle || effectiveAuthorHandle,
       authorName: effectiveAuthorName,
       authorAvatar: effectiveAuthorAvatar,
-      authorType: opts.authorType || 'user',
-      authorBadge: opts.authorBadge,
-      content: trimmed,
+      authorType: (savedDbRow.author_type || dbAuthorType) as AuthorType,
+      authorBadge: savedDbRow.author_badge || dbBadge || undefined,
+      content: sanitizedContent,
       mediaUrls,
       mediaType: finalMediaType,
-      imageUrl: mediaUrls[0] || opts.imageUrl || undefined,
-      pollId,
+      imageUrl: mediaUrls[0] || undefined,
+      pollId: pollObj ? pollObj.id : null,
       poll: pollObj,
-      sourceType: opts.authorType === 'journalist' ? 'journalist' : 'user',
-      likesCount: 0,
-      repliesCount: 0,
-      repostsCount: 0,
-      reactionFireCount: 0,
-      reactionClownCount: 0,
-      reactionSkullCount: 0,
-      commentCount: 0,
-      repostCount: 0,
-      impressionsCount: 1,
-      viewsCount: 1,
+      sourceType: 'user',
+      likesCount: savedDbRow.reaction_fire_count || 0,
+      repliesCount: savedDbRow.comment_count || 0,
+      repostsCount: savedDbRow.repost_count || 0,
+      reactionFireCount: savedDbRow.reaction_fire_count || 0,
+      reactionClownCount: savedDbRow.reaction_clown_count || 0,
+      reactionSkullCount: savedDbRow.reaction_skull_count || 0,
+      commentCount: savedDbRow.comment_count || 0,
+      repostCount: savedDbRow.repost_count || 0,
+      impressionsCount: savedDbRow.impressions_count ?? baselineImpressions,
+      impressions: savedDbRow.impressions_count ?? baselineImpressions,
+      viewsCount: savedDbRow.views_count ?? baselineViews,
       isMine: true,
-      createdAt: new Date().toISOString(),
+      createdAt: savedDbRow.created_at || new Date().toISOString(),
       userReactions: {}
     };
 
-    // Optimistically update local array and cache
-    this.localPosts = [newPost, ...this.localPosts];
+    // Update local cache immediately for sender
+    this.localPosts = [finalPost, ...this.localPosts.filter(p => p.id !== finalPost.id)];
     setStoredItem('egerscore_local_banter_posts', this.localPosts);
-    const existingCache = this.getCachedMainPosts('all', newPost.matchId) || [];
-    this.setCachedMainPosts('all', newPost.matchId, [newPost, ...existingCache.filter(p => p.id !== newPost.id)]);
+    const existingCache = this.getCachedMainPosts('all', finalPost.matchId) || [];
+    this.setCachedMainPosts('all', finalPost.matchId, [finalPost, ...existingCache.filter(p => p.id !== finalPost.id)]);
 
-    // Persist to Supabase
-    try {
-      await this.persistPostToBackend(newPost, pollObj);
-    } catch (err) {
-      console.warn('Backend banter post persist deferred:', err);
-    }
+    return finalPost;
+  }
 
-    return newPost;
+  public async createPost(
+    contentOrOptions: string | CreatePostOptions,
+    matchId?: string | null,
+    matchContext?: BanterPost['matchContext'],
+    imageUrl?: string | null,
+    extraOptions?: Partial<CreatePostOptions>
+  ): Promise<BanterPost> {
+    return this.writePostToDatabase(contentOrOptions, matchId, matchContext, imageUrl, extraOptions);
   }
 
   public async createReply(parentId: string, content: string, extra?: Partial<CreatePostOptions>): Promise<BanterPost> {
@@ -1292,9 +1580,7 @@ export class BanterService {
     userReactions[postId] = postReactions;
     setStoredItem(STORAGE_KEYS.USER_REACTIONS, userReactions);
 
-    const targetPost = this.localPosts.find((p: BanterPost) => p.id === postId)
-      || SEEDED_BANTER_POSTS.find((p: BanterPost) => p.id === postId)
-      || (fictionalBanterPosts() as BanterPost[]).find((p: BanterPost) => p.id === postId);
+    const targetPost = this.localPosts.find((p: BanterPost) => p.id === postId);
 
     let countField: 'reactionFireCount' | 'reactionClownCount' | 'reactionSkullCount' = 'reactionFireCount';
     if (reactionType === 'clown') countField = 'reactionClownCount';
@@ -1677,17 +1963,18 @@ export class BanterService {
       mediaType,
       imageUrl: mediaUrls[0] || d.image_url,
       sourceType: d.source_type || 'user',
-      likesCount: d.likes_count || d.reaction_fire_count || 0,
-      repliesCount: d.replies_count || d.comment_count || 0,
-      repostsCount: d.reposts_count || Math.floor(((d.reaction_fire_count || 0) + 4) * 1.3),
-      reactionFireCount: d.reaction_fire_count || 0,
-      reactionClownCount: d.reaction_clown_count || 0,
-      reactionSkullCount: d.reaction_skull_count || 0,
-      commentCount: d.comment_count || 0,
-      repostCount: d.repost_count || Math.floor(((d.reaction_fire_count || 0) + 4) * 1.3),
+      likesCount: d.likes_count ?? d.reaction_fire_count ?? 0,
+      repliesCount: d.comment_count ?? d.replies_count ?? 0,
+      repostsCount: d.repost_count ?? d.reposts_count ?? 0,
+      reactionFireCount: d.reaction_fire_count ?? 0,
+      reactionClownCount: d.reaction_clown_count ?? 0,
+      reactionSkullCount: d.reaction_skull_count ?? 0,
+      commentCount: d.comment_count ?? 0,
+      repostCount: d.repost_count ?? d.reposts_count ?? 0,
       isTrending: Boolean(d.is_trending),
-      impressions: d.impressions ?? d.impressions_count ?? Math.min(1500, Math.max(500, 500 + ((d.reaction_fire_count || 0) * 8))),
-      impressionsCount: d.impressions ?? d.impressions_count ?? Math.min(1500, Math.max(500, 500 + ((d.reaction_fire_count || 0) * 8))),
+      impressions: d.impressions_count ?? d.impressions ?? 0,
+      impressionsCount: d.impressions_count ?? d.impressions ?? 0,
+      viewsCount: d.views_count ?? 1,
       pollId,
       poll: poll || undefined,
       taggedTeamId: d.tagged_team_id || null,
@@ -1748,7 +2035,7 @@ export class BanterService {
       // fallback to computed local stats
     }
 
-    const all = [...this.localPosts, ...SEEDED_BANTER_POSTS];
+    const all = this.localPosts;
     const totalPosts = all.filter(p => !p.parentId).length;
     const totalReplies = all.filter(p => Boolean(p.parentId)).length;
     const deviceSet = new Set(all.map(p => p.authorDeviceId || p.userId || p.id));
