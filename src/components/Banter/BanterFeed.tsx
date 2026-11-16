@@ -130,8 +130,7 @@ export const BanterFeed: React.FC<BanterFeedProps> = ({
           </div>
         )}
 
-        {/* Flush with sort menu: zero space between messages sort menu and whichever message is at top */}
-        <div className="border-x border-b border-t-0 border-zinc-800/80 rounded-b-2xl bg-black overflow-hidden divide-y divide-zinc-800/70 shadow-lg">
+        <div className="border border-zinc-800/80 rounded-2xl bg-black overflow-hidden divide-y divide-zinc-800/70 shadow-lg">
           {posts.map((post, index) => (
             <div key={post.id} data-post-id={post.id}>
               <BanterPostCard

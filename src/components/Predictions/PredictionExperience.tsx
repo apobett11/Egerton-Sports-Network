@@ -334,6 +334,105 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const [contextMatch, setContextMatch] = useState<Match | null>(null);
   const [banterPosts, setBanterPosts] = useState<BanterPost[]>([]);
   const [isLoadingBanter, setIsLoadingBanter] = useState(true);
+  const [filterHistory, setFilterHistory] = useState<BanterFilterType[]>(['all']);
+
+  const handleSelectFilter = useCallback((filter: BanterFilterType) => {
+    if (filter === banterFilter) return;
+    setFilterHistory((prev) => [...prev, filter]);
+    setBanterFilter(filter);
+  }, [banterFilter]);
+
+  const handleBackClick = useCallback(() => {
+    // 1. If in thread view, return to feed without leaving news page
+    if (threadPostId) {
+      setThreadPostId(null);
+      sessionStorage.removeItem('active_banter_thread_id');
+      window.location.hash = '#/banter';
+      return;
+    }
+
+    // 2. If compose modal is open, close it
+    if (isComposeModalOpen) {
+      setIsComposeModalOpen(false);
+      setComposeModalTool(null);
+      return;
+    }
+
+    // 3. If filtered by a match context, clear it
+    if (contextMatch) {
+      setContextMatch(null);
+      return;
+    }
+
+    // 4. If club banter filter is active, clear it
+    if (clubBanterOnly) {
+      setClubBanterOnly(false);
+      return;
+    }
+
+    // 5. If navigated between tabs/filters, return to previous filter
+    if (filterHistory.length > 1) {
+      const updated = [...filterHistory];
+      updated.pop();
+      const prev = updated[updated.length - 1] || 'all';
+      setFilterHistory(updated);
+      setBanterFilter(prev);
+      return;
+    } else if (banterFilter !== 'all') {
+      setBanterFilter('all');
+      setFilterHistory(['all']);
+      return;
+    }
+
+    // 6. User is on the messages main thread homepage (For you / all filter, root feed):
+    // Prompt: Leave "news and articles" page?.. and one will choose what to do
+    setShowLeaveBanterPrompt(true);
+  }, [threadPostId, isComposeModalOpen, contextMatch, clubBanterOnly, filterHistory, banterFilter]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (showLeaveBanterPrompt) {
+        setShowLeaveBanterPrompt(false);
+        return;
+      }
+      if (threadPostId) {
+        setThreadPostId(null);
+        sessionStorage.removeItem('active_banter_thread_id');
+        return;
+      }
+      if (isComposeModalOpen) {
+        setIsComposeModalOpen(false);
+        setComposeModalTool(null);
+        return;
+      }
+      if (contextMatch) {
+        setContextMatch(null);
+        return;
+      }
+      if (filterHistory.length > 1) {
+        const updated = [...filterHistory];
+        updated.pop();
+        const prev = updated[updated.length - 1] || 'all';
+        setFilterHistory(updated);
+        setBanterFilter(prev);
+        return;
+      }
+      if (banterFilter !== 'all') {
+        setBanterFilter('all');
+        setFilterHistory(['all']);
+        return;
+      }
+
+      // On messages main thread homepage: keep on page and show leave confirmation
+      try {
+        window.history.pushState({ page: 'banter-home' }, '', window.location.href);
+      } catch {}
+      setShowLeaveBanterPrompt(true);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [threadPostId, isComposeModalOpen, contextMatch, filterHistory, banterFilter, showLeaveBanterPrompt]);
 
   useEffect(() => {
     let mounted = true;
@@ -1396,12 +1495,12 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                 />
               ) : (
                 <div className="animate-fadeIn pb-12">
-                  {/* Twitter/X Style Translucent Sticky Header */}
-                  <div className="sticky top-0 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-black/85 backdrop-blur-md border-b border-zinc-800/80 flex items-center justify-between mb-3">
+                  {/* Twitter/X Style Header */}
+                  <div className="relative z-10 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-black/85 border-b border-zinc-800/80 flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                       <button
                         type="button"
-                        onClick={() => setShowLeaveBanterPrompt(true)}
+                        onClick={handleBackClick}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700/80 transition-colors text-xs font-bold cursor-pointer group shrink-0"
                         aria-label="Back"
                         data-testid="banter-back-button"
@@ -1429,7 +1528,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                     </span>
                   </div>
 
-                  {/* Confirmation Modal to Leave Sports News and Articles Page */}
+                  {/* Confirmation Modal to Leave News and Articles Page */}
                   {showLeaveBanterPrompt && (
                     <div
                       role="dialog"
@@ -1443,9 +1542,9 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                             <AlertCircle className="h-5 w-5" />
                           </div>
                           <div>
-                            <h3 className="text-base font-bold text-white">Leave "Sports News and Articles" page?</h3>
+                            <h3 className="text-base font-bold text-white">Leave "News & Articles" page?</h3>
                             <p className="text-xs text-zinc-400 mt-0.5">
-                              Are you sure you want to leave the sports news and articles page?
+                              Are you sure you want to leave the news and articles page?
                             </p>
                           </div>
                         </div>
@@ -1497,56 +1596,55 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                         onClearActiveTool={() => setMobileFabTool(null)}
                       />
 
-                      {/* Attached Sort Menu & Message Feed - No space between sort menu and top message */}
-                      <div className="space-y-0 rounded-2xl overflow-hidden shadow-lg border border-zinc-800/80 bg-black">
-                        {/* Tab Strip with Underline Indicators (Attached directly to top message card) */}
-                        <div className="sticky top-11 z-20">
-                          <BanterTabs
-                            activeFilter={banterFilter}
-                            onSelectFilter={setBanterFilter}
-                            activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
-                            onClearMatchContext={() => setContextMatch(null)}
+                      {/* Sticky Messages Sort Menu: scrolls up until it reaches top of page, then sticks */}
+                      <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-md mb-[3px]">
+                        <BanterTabs
+                          activeFilter={banterFilter}
+                          onSelectFilter={handleSelectFilter}
+                          activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
+                          onClearMatchContext={() => setContextMatch(null)}
+                          onBack={handleBackClick}
+                        />
+                      </div>
+
+                      {clubBanterOnly && favouriteTeam && (
+                        <div className="bg-amber-500/10 border border-zinc-800 rounded-xl px-3 py-1.5 text-[11px] font-bold text-amber-300 mb-[3px]">
+                          Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
+                        </div>
+                      )}
+
+                      {banterFilter === 'mine' ? (
+                        <div className="rounded-2xl border border-zinc-800/80 bg-black p-3 shadow-lg">
+                          <TalkDashboard
+                            handle={identity.publicHandle}
+                            deviceBound={identity.bound}
+                            myPosts={banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)}
+                            likedPosts={banterPosts.filter((post) => likedIds.includes(post.id))}
+                            repostedPosts={banterPosts.filter((post) => repostedIds.includes(post.id))}
                           />
                         </div>
-
-                        {clubBanterOnly && favouriteTeam && (
-                          <div className="bg-amber-500/10 border-b border-zinc-800 px-3 py-1.5 text-[11px] font-bold text-amber-300">
-                            Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
-                          </div>
-                        )}
-
-                        {banterFilter === 'mine' ? (
-                          <div className="p-3">
-                            <TalkDashboard
-                              handle={identity.publicHandle}
-                              deviceBound={identity.bound}
-                              myPosts={banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)}
-                              likedPosts={banterPosts.filter((post) => likedIds.includes(post.id))}
-                              repostedPosts={banterPosts.filter((post) => repostedIds.includes(post.id))}
-                            />
-                          </div>
-                        ) : (
-                          <BanterFeed
-                            posts={shownBanterPosts}
-                            isLoading={isLoadingBanter}
-                            onRefresh={loadBanter}
-                            onLoadMore={loadMoreBanter}
-                            showHot={banterFilter === 'trending'}
-                            emptyTitle={
-                              clubBanterOnly
-                                ? 'No takes about your club on this matchday.'
-                                : banterFilter === 'teams'
-                                ? 'No tagged team takes yet.'
-                                : banterFilter === 'coach'
-                                ? 'No coach dispatches yet.'
-                                : banterFilter === 'analytics'
-                                ? 'No league journal articles yet.'
-                                : banterFilter === 'banter'
-                                ? 'No banter & trolls yet.'
-                                : banterFilter === 'latest'
-                                ? 'Nothing new today.'
-                                : 'The room is quiet.'
-                            }
+                      ) : (
+                        <BanterFeed
+                          posts={shownBanterPosts}
+                          isLoading={isLoadingBanter}
+                          onRefresh={loadBanter}
+                          onLoadMore={loadMoreBanter}
+                          showHot={banterFilter === 'trending'}
+                          emptyTitle={
+                            clubBanterOnly
+                              ? 'No takes about your club on this matchday.'
+                              : banterFilter === 'teams'
+                              ? 'No tagged team takes yet.'
+                              : banterFilter === 'coach'
+                              ? 'No coach dispatches yet.'
+                              : banterFilter === 'analytics'
+                              ? 'No league journal articles yet.'
+                              : banterFilter === 'banter'
+                              ? 'No banter & trolls yet.'
+                              : banterFilter === 'latest'
+                              ? 'Nothing new today.'
+                              : 'The room is quiet.'
+                          }
                           emptyBody={
                             banterFilter === 'teams'
                               ? 'Takes tagging specific teams or leagues will appear here. Tag a team with @ or using the Tag button!'
@@ -1564,7 +1662,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           onEmptyAction={
                             banterFilter === 'trending' && !clubBanterOnly
                               ? undefined
-                              : () => setBanterFilter('all')
+                              : () => handleSelectFilter('all')
                           }
                           onToggleReaction={handleToggleReaction}
                           onOpenComments={(post) => {
@@ -1594,7 +1692,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           }}
                         />
                       )}
-                      </div>
                     </div>
 
                     {/* Right Discovery Sidebar (Desktop >= 1024px) */}
