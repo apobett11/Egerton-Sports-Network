@@ -1667,11 +1667,15 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           onToggleReaction={handleToggleReaction}
                           onOpenComments={(post) => {
                             const cleanRef = getCleanMessageRef(post);
-                            sessionStorage.setItem('active_banter_thread_id', post.id);
-                            sessionStorage.setItem(`banter_ref_${cleanRef}`, post.id);
+                            try {
+                              sessionStorage.setItem('active_banter_thread_id', post.id);
+                              sessionStorage.setItem(`banter_ref_${cleanRef}`, post.id);
+                              sessionStorage.setItem('active_banter_post', JSON.stringify(post));
+                            } catch {}
+                            banterService.registerPost(post);
                             banterService.registerPostRef(post.id, cleanRef);
                             setThreadPostId(post.id);
-                            window.location.hash = `#/banter/${cleanRef}`;
+                            window.location.hash = `#/banter/${cleanRef}?id=${post.id}`;
                           }}
                           onPickGames={() => {
                             setActiveTab('scores');

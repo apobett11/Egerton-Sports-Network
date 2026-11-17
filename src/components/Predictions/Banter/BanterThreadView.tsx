@@ -169,11 +169,14 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         skull: Boolean(data.post.userReactions?.skull),
       });
     }
-    try {
-      const feedPosts = await banterService.fetchPosts('trending', null, 8, 0, devId);
-      setMoreStories((feedPosts as BanterPost[]).filter((p: BanterPost) => p.id !== postId).slice(0, 3));
-    } catch {
-      // offline safe
+    const replyCount = data.post ? (data.post.commentCount ?? data.post.repliesCount ?? 0) : 0;
+    if (replyCount > 0) {
+      try {
+        const feedPosts = await banterService.fetchPosts('trending', null, 8, 0, devId);
+        setMoreStories((feedPosts as BanterPost[]).filter((p: BanterPost) => p.id !== postId).slice(0, 3));
+      } catch {
+        // offline safe
+      }
     }
     setIsLoading(false);
   }, [postId, currentDeviceId]);

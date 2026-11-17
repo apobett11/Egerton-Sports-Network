@@ -23,6 +23,7 @@ import {
   AvatarViewModal
 } from '../../lib/predictions/footballAvatars';
 import { ImageLightboxModal } from '../common/ImageLightboxModal';
+import { banterService } from '../../services/predictions/banterService';
 import type { BanterPost, ReactionType } from '../../types/predictions';
 
 interface BanterPostCardProps {
@@ -241,8 +242,13 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     }
     // Navigate to full-page thread view (clean message ref, never internal UID)
     const messageRef = getCleanMessageRef(post);
-    sessionStorage.setItem('active_banter_thread_id', post.id);
-    sessionStorage.setItem(`banter_ref_${messageRef}`, post.id);
+    try {
+      sessionStorage.setItem('active_banter_thread_id', post.id);
+      sessionStorage.setItem(`banter_ref_${messageRef}`, post.id);
+      sessionStorage.setItem('active_banter_post', JSON.stringify(post));
+    } catch {}
+    banterService.registerPost(post);
+    banterService.registerPostRef(post.id, messageRef);
     window.location.hash = `#/banter/${messageRef}?id=${post.id}`;
     if (onOpenComments) onOpenComments(post);
   };
@@ -577,11 +583,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               data-testid="message-impressions"
               onClick={(e) => {
                 e.stopPropagation();
-                const messageRef = getCleanMessageRef(post);
-                sessionStorage.setItem('active_banter_thread_id', post.id);
-                sessionStorage.setItem(`banter_ref_${messageRef}`, post.id);
-                window.location.hash = `#/banter/${messageRef}?id=${post.id}`;
-                if (onOpenComments) onOpenComments(post);
+                handlePostClick();
               }}
               className="flex items-center gap-1.5 p-1.5 rounded-full hover:bg-sky-500/10 text-zinc-500 hover:text-sky-400 transition-colors cursor-pointer select-none group"
               title={`${impressions.toLocaleString()} views - View post`}

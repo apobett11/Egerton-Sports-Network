@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Send, AlertCircle, Hash, User, Image as ImageIcon, X } from 'lucide-react';
+import { compressAndStripImage } from '../../lib/predictions/mediaOptimizer';
 
 interface BanterComposerProps {
   onPostCreated: (content: string, imageUrl?: string | null) => Promise<void>;
@@ -24,21 +25,27 @@ export const BanterComposer: React.FC<BanterComposerProps> = ({
   const isOverLimit = remainingChars < 0;
   const isValid = (content.trim().length > 0 || imagePreview !== null) && !isOverLimit;
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 3 * 1024 * 1024) {
-      setErrorMsg('Image size should be less than 3MB.');
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg('Image size should be less than 10MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      setImagePreview(uploadEvent.target?.result as string);
+    try {
+      const optimized = await compressAndStripImage(file, 1080, 0.82);
+      setImagePreview(optimized.dataUrl);
       setErrorMsg(null);
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        setImagePreview(uploadEvent.target?.result as string);
+        setErrorMsg(null);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleRemoveImage = () => {

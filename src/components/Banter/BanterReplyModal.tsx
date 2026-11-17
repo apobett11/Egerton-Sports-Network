@@ -5,6 +5,7 @@ import { anonymousIdentityService } from '../../services/predictions/anonymousId
 import { getActiveSessionProfile } from '../../utils/sessionIdentity';
 import { getAuthorIdentityMeta } from '../../lib/predictions/footballAvatars';
 import { formatRelativeTime } from '../../lib/predictions/utils';
+import { compressAndStripImage } from '../../lib/predictions/mediaOptimizer';
 import type { BanterPost, BanterMediaType } from '../../types/predictions';
 
 interface BanterReplyModalProps {
@@ -54,9 +55,20 @@ export const BanterReplyModal: React.FC<BanterReplyModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (type === 'image') {
+      try {
+        const optimized = await compressAndStripImage(file, 1080, 0.82);
+        setMediaPreview(optimized.dataUrl);
+        setMediaType('IMAGE');
+        return;
+      } catch {
+        // fallback
+      }
+    }
 
     const reader = new FileReader();
     reader.onload = () => {

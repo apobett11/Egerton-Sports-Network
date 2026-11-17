@@ -13,6 +13,7 @@ import {
   Shield
 } from 'lucide-react';
 import { validateVideoFile } from '../../../services/predictions/banterService';
+import { compressAndStripImage } from '../../../lib/predictions/mediaOptimizer';
 import { supabase } from '../../../lib/predictions/banterSupabase';
 import { EPL_TEAMS } from '../../../lib/predictions/eplTeams';
 import { formatTeamTag, formatMatchTag } from '../../../lib/predictions/utils';
@@ -281,16 +282,21 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
         });
         newPreviews.push({ url: previewUrl, type: 'video', duration: validation.duration });
       } else if (file.type.startsWith('image/')) {
-        if (file.size > 5 * 1024 * 1024) {
-          setErrorMsg('Image size must be under 5MB.');
+        if (file.size > 10 * 1024 * 1024) {
+          setErrorMsg('Image size must be under 10MB.');
           return;
         }
-        const previewUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-        newPreviews.push({ url: previewUrl, type: 'image' });
+        try {
+          const optimized = await compressAndStripImage(file, 1080, 0.82);
+          newPreviews.push({ url: optimized.dataUrl, type: 'image' });
+        } catch {
+          const fallbackUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+          newPreviews.push({ url: fallbackUrl, type: 'image' });
+        }
       }
     }
 

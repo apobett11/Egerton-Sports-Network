@@ -448,6 +448,7 @@ export class BanterService {
   private lastPostTimestamp = 0;
   private postRefToIdMap: Record<string, string> = {};
   private postIdToRefMap: Record<string, string> = {};
+  private knownPostsMap: Map<string, BanterPost> = new Map();
 
   constructor() {
     const rawLocal = getStoredItem<BanterPost[]>('egerscore_local_banter_posts', []);
@@ -467,6 +468,16 @@ export class BanterService {
     if (postId && ref) {
       this.postRefToIdMap[ref] = postId;
       this.postIdToRefMap[postId] = ref;
+    }
+  }
+
+  public registerPost(post: BanterPost): void {
+    if (!post || !post.id) return;
+    this.knownPostsMap.set(post.id, post);
+    const cleanRef = getCleanMessageRef(post);
+    if (cleanRef) {
+      this.knownPostsMap.set(cleanRef, post);
+      this.registerPostRef(post.id, cleanRef);
     }
   }
 
@@ -493,6 +504,16 @@ export class BanterService {
 
   public setCachedMainPosts(filter: string, matchId: string | null | undefined, posts: BanterPost[]): void {
     if (typeof localStorage === 'undefined' || !Array.isArray(posts) || posts.length === 0) return;
+    posts.forEach((p) => {
+      if (p && p.id) {
+        this.knownPostsMap.set(p.id, p);
+        const ref = getCleanMessageRef(p);
+        if (ref) {
+          this.knownPostsMap.set(ref, p);
+          this.registerPostRef(p.id, ref);
+        }
+      }
+    });
     try {
       const cacheKey = `egerscore_banter_cache_${filter}_${matchId || 'all'}`;
       localStorage.setItem(cacheKey, JSON.stringify(posts.slice(0, 30)));
@@ -716,25 +737,69 @@ export class BanterService {
   }
 
   public async getPostById(postId: string, deviceId?: string): Promise<BanterPost | null> {
+    if (!postId) return null;
     const devId = deviceId || this.getAuthoritativeDeviceId();
     const resolvedId = this.resolvePostIdFromRef(postId);
     const matchesId = (p: BanterPost) =>
-      p.id === resolvedId ||
-      p.id === postId ||
-      p.id.endsWith(resolvedId) ||
-      p.id.replace(/^post-seed-/, '') === resolvedId ||
-      getCleanMessageRef(p) === postId ||
-      (resolvedId.length >= 6 && p.id.startsWith(resolvedId));
+      Boolean(
+        p &&
+        (p.id === resolvedId ||
+          p.id === postId ||
+          p.id.endsWith(resolvedId) ||
+          p.id.replace(/^post-seed-/, '') === resolvedId ||
+          getCleanMessageRef(p) === postId ||
+          getCleanMessageRef(p) === resolvedId ||
+          (resolvedId.length >= 6 && p.id.startsWith(resolvedId)))
+      );
 
+    // 1. Check in-memory registered posts
+    if (this.knownPostsMap.has(postId)) {
+      const p = this.knownPostsMap.get(postId)!;
+      this.registerPostRef(p.id, getCleanMessageRef(p));
+      return p;
+    }
+    if (this.knownPostsMap.has(resolvedId)) {
+      const p = this.knownPostsMap.get(resolvedId)!;
+      this.registerPostRef(p.id, getCleanMessageRef(p));
+      return p;
+    }
+
+    // 2. Check local posts
     const post = this.localPosts.find(matchesId);
-
     if (post) {
-      this.registerPostRef(post.id, getCleanMessageRef(post));
+      this.registerPost(post);
       if (post.pollId) {
         await this.syncPollsForDevice([post.pollId], devId);
         post.poll = this.getPollById(post.pollId) || post.poll;
       }
       return post;
+    }
+
+    // 3. Check cached posts in localStorage across all feed tabs
+    const cacheFilters = ['trending', 'all', 'recent', 'hot'];
+    for (const f of cacheFilters) {
+      const cached = this.getCachedMainPosts(f);
+      if (cached && cached.length > 0) {
+        const found = cached.find(matchesId);
+        if (found) {
+          this.registerPost(found);
+          return found;
+        }
+      }
+    }
+
+    // 4. Check sessionStorage active_banter_post
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        const storedActive = sessionStorage.getItem('active_banter_post');
+        if (storedActive) {
+          const parsed = JSON.parse(storedActive);
+          if (parsed && matchesId(parsed)) {
+            this.registerPost(parsed);
+            return parsed;
+          }
+        }
+      } catch {}
     }
 
     const client = supabaseBanterAdmin || supabase;
@@ -758,6 +823,7 @@ export class BanterService {
           data.repost_count = metrics.reposts;
           data.views_count = metrics.views;
           const mapped = this.mapDatabaseRowToPost(data, {}, devId);
+          this.registerPost(mapped);
           return mapped;
         }
 
@@ -775,7 +841,7 @@ export class BanterService {
             created_at: cData.created_at,
             parent_id: cData.post_id
           });
-          return {
+          const mappedComment: BanterPost = {
             id: cData.id,
             parentId: cData.post_id,
             rootId: cData.post_id,
@@ -799,8 +865,9 @@ export class BanterService {
             impressionsCount: metrics.impressions,
             viewsCount: metrics.views,
             createdAt: cData.created_at,
-            userReactions: {}
           };
+          this.registerPost(mappedComment);
+          return mappedComment;
         }
       } else {
         // Look up by clean ref in recent active posts
@@ -903,32 +970,14 @@ export class BanterService {
         void this.syncPollsForDevice(pollIds, devId).catch(() => {});
       }
 
-      // Execute dynamic metrics calculation from elapsed time since sent and update DB
+      // Execute dynamic metrics calculation from elapsed time since sent (Read-only presentation, zero DB write on scroll)
       const posts: BanterPost[] = rawDbPosts
         .filter((d: any) => !isTestPost(d))
         .map((d: any) => {
           const metrics = calculateDynamicMetrics(d);
-          const needsUpdate =
-            d.impressions_count !== metrics.impressions ||
-            d.repost_count !== metrics.reposts ||
-            d.views_count !== metrics.views;
-
-          if (needsUpdate) {
-            d.impressions_count = metrics.impressions;
-            d.repost_count = metrics.reposts;
-            d.views_count = metrics.views;
-            if (supabaseBanterAdmin) {
-              supabaseBanterAdmin
-                .from('banter_posts')
-                .update({
-                  impressions_count: metrics.impressions,
-                  repost_count: metrics.reposts,
-                  views_count: metrics.views
-                })
-                .eq('id', d.id)
-                .then();
-            }
-          }
+          d.impressions_count = Math.max(d.impressions_count || 0, metrics.impressions);
+          d.repost_count = Math.max(d.repost_count || 0, metrics.reposts);
+          d.views_count = Math.max(d.views_count || 0, metrics.views);
           return this.mapDatabaseRowToPost(d, userReactions, devId);
         });
 
@@ -1021,68 +1070,72 @@ export class BanterService {
     }
 
     // Section Load: Load direct replies for this thread from banter_comments in database
+    // When the replies are zero, no calls are done
+    const replyCount = activePost ? (activePost.commentCount ?? activePost.repliesCount ?? 0) : 0;
     let replies: BanterPost[] = [];
 
-    try {
-      const isUuid = /^[0-9a-f-]{36}$/i.test(effectivePostId);
-      if (isUuid) {
-        const client = supabaseBanterAdmin || supabase;
-        const { data, error } = await client
-          .from('banter_comments')
-          .select('*')
-          .eq('post_id', effectivePostId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: true })
-          .limit(100);
+    if (replyCount > 0) {
+      try {
+        const isUuid = /^[0-9a-f-]{36}$/i.test(effectivePostId);
+        if (isUuid) {
+          const client = supabaseBanterAdmin || supabase;
+          const { data, error } = await client
+            .from('banter_comments')
+            .select('*')
+            .eq('post_id', effectivePostId)
+            .eq('status', 'active')
+            .order('created_at', { ascending: true })
+            .limit(100);
 
-      if (!error && data && data.length > 0) {
-        replies = data
-          .filter((d: any) => !isTestPost(d))
-          .map((d: any) => {
-            const parsedMedia = parseMediaFromContent(d.content || '');
-            let aType = d.author_type || 'user';
-            let aBadge = d.author_badge;
-            if (aType === 'coach' || (aBadge || '').toLowerCase().includes('coach')) {
-              aType = 'coach';
-            }
-            const metrics = calculateDynamicMetrics({
-              id: d.id,
-              created_at: d.created_at,
-              parent_id: d.post_id
-            });
-            return {
-              id: d.id,
-              parentId: d.post_id,
-              rootId: d.post_id,
-              depth: 1,
-              userId: d.device_id,
-              authorDeviceId: d.device_id,
-              author_device_id: d.device_id,
-              authorHandle: d.author_handle || 'Fanatic',
-              authorName: (d.author_handle || 'Fanatic').split(' #')[0],
-              authorType: aType,
-              authorBadge: aBadge,
-              content: parsedMedia.cleanContent || d.content,
-              mediaUrls: parsedMedia.mediaUrls,
-              mediaType: parsedMedia.mediaType,
-              imageUrl: parsedMedia.mediaUrls[0] || undefined,
-              sourceType: 'user' as const,
-              reactionFireCount: 0,
-              reactionClownCount: 0,
-              reactionSkullCount: 0,
-              commentCount: 0,
-              repliesCount: 0,
-              repostCount: metrics.reposts,
-              impressionsCount: metrics.impressions,
-              viewsCount: metrics.views,
-              createdAt: d.created_at,
-              userReactions: userReactions[d.id] || {}
-            };
-          });
+          if (!error && data && data.length > 0) {
+            replies = data
+              .filter((d: any) => !isTestPost(d))
+              .map((d: any) => {
+                const parsedMedia = parseMediaFromContent(d.content || '');
+                let aType = d.author_type || 'user';
+                let aBadge = d.author_badge;
+                if (aType === 'coach' || (aBadge || '').toLowerCase().includes('coach')) {
+                  aType = 'coach';
+                }
+                const metrics = calculateDynamicMetrics({
+                  id: d.id,
+                  created_at: d.created_at,
+                  parent_id: d.post_id
+                });
+                return {
+                  id: d.id,
+                  parentId: d.post_id,
+                  rootId: d.post_id,
+                  depth: 1,
+                  userId: d.device_id,
+                  authorDeviceId: d.device_id,
+                  author_device_id: d.device_id,
+                  authorHandle: d.author_handle || 'Fanatic',
+                  authorName: (d.author_handle || 'Fanatic').split(' #')[0],
+                  authorType: aType,
+                  authorBadge: aBadge,
+                  content: parsedMedia.cleanContent || d.content,
+                  mediaUrls: parsedMedia.mediaUrls,
+                  mediaType: parsedMedia.mediaType,
+                  imageUrl: parsedMedia.mediaUrls[0] || undefined,
+                  sourceType: 'user' as const,
+                  reactionFireCount: 0,
+                  reactionClownCount: 0,
+                  reactionSkullCount: 0,
+                  commentCount: 0,
+                  repliesCount: 0,
+                  repostCount: metrics.reposts,
+                  impressionsCount: metrics.impressions,
+                  viewsCount: metrics.views,
+                  createdAt: d.created_at,
+                  userReactions: userReactions[d.id] || {}
+                };
+              });
+          }
         }
+      } catch {
+        // offline safe
       }
-    } catch {
-      // offline safe
     }
 
     // Include local replies directly attached to this post (not yet in remote DB)
@@ -1558,8 +1611,41 @@ export class BanterService {
     return { success: true, poll: updatedPoll };
   }
 
+  private pendingImpressionIds: Set<string> = new Set();
+  private batchFlushTimer: any = null;
+
   public recordImpression(postId: string): void {
-    // Recorded impression
+    if (!postId || !/^[0-9a-f-]{36}$/i.test(postId)) return;
+    this.pendingImpressionIds.add(postId);
+    if (!this.batchFlushTimer) {
+      this.batchFlushTimer = setTimeout(() => {
+        this.flushPendingImpressions().catch(() => {});
+      }, 30000);
+    }
+  }
+
+  public async flushPendingImpressions(): Promise<void> {
+    if (this.batchFlushTimer) {
+      clearTimeout(this.batchFlushTimer);
+      this.batchFlushTimer = null;
+    }
+    const ids = Array.from(this.pendingImpressionIds);
+    this.pendingImpressionIds.clear();
+    if (ids.length === 0) return;
+
+    try {
+      const impressions = ids.map(() => 1);
+      const reposts = ids.map(() => 0);
+      const views = ids.map(() => 1);
+      await supabase.rpc('batch_increment_banter_metrics', {
+        p_post_ids: ids,
+        p_impressions: impressions,
+        p_reposts: reposts,
+        p_views: views,
+      });
+    } catch {
+      // offline safe
+    }
   }
 
   public async toggleReaction(
