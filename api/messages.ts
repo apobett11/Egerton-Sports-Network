@@ -30,44 +30,12 @@ export function calculateDynamicMetrics(post: {
   reaction_clown_count?: number;
   reaction_skull_count?: number;
   comment_count?: number;
+  is_trending?: boolean;
 }) {
-  const createdAtMs = post.created_at ? new Date(post.created_at).getTime() : Date.now();
-  const elapsedMinutes = Math.max(0, (Date.now() - createdAtMs) / (1000 * 60));
-  const idStr = post.id || 'msg';
-  const idHash = (idStr.charCodeAt(0) || 0) + (idStr.charCodeAt(idStr.length - 1) || 0);
-
-  // Deterministic baseline organic seed (18 to 35)
-  const baseSeed = 18 + (idHash % 18);
-  // Logarithmic gradual growth over elapsed time since sent
-  const timeBonus = Math.floor(45 * Math.log(1 + elapsedMinutes * 0.15));
-
-  // Bonuses from real reactions and comments
-  const fires = post.reaction_fire_count || 0;
-  const clowns = post.reaction_clown_count || 0;
-  const skulls = post.reaction_skull_count || 0;
-  const comments = post.comment_count || 0;
-  const engagementBonus = (fires * 14) + (clowns * 6) + (skulls * 6) + (comments * 22);
-
-  let impressions = Math.max(post.impressions_count || baseSeed, baseSeed + timeBonus + engagementBonus);
-
-  // Regulate into standard bounds (normal up to 1500, trending 1501..1940)
-  const isTrending = impressions > 1500;
-  if (isTrending) {
-    impressions = Math.min(1940, impressions);
-  } else {
-    impressions = Math.min(1500, impressions);
-  }
-
-  // Reposts naturally start from zero. Depending on real impressions, they rise accordingly:
-  // Under 45 impressions: strictly 0
-  // Above 45 impressions: rises gradually with impressions + fraction of fire reactions
-  let reposts = 0;
-  if (impressions > 45) {
-    reposts = Math.floor((impressions - 45) * 0.02) + Math.floor(fires * 0.15);
-  }
-
-  const views = Math.max(post.views_count || 1, Math.floor(impressions * 0.42));
-
+  const impressions = post.impressions_count ?? 0;
+  const reposts = post.repost_count ?? 0;
+  const views = post.views_count ?? (impressions > 0 ? Math.floor(impressions * 0.42) : 0);
+  const isTrending = Boolean(post.is_trending ?? (impressions > 1500));
   return { impressions, reposts, views, isTrending };
 }
 
@@ -128,9 +96,9 @@ export default async function handler(req: any, res: any) {
       const limit = parseInt(url.searchParams.get('limit') || req.query?.limit || '50', 10);
 
       if (threadId) {
-        // Fetch active post and all its replies from banter_comments
+        // Fetch active post and all its replies from banter_comments and banter_posts
         const { data: post, error: postErr } = await supabaseAdmin
-          .from('banter_posts')
+          .from('banter_posts_enriched')
           .select('*')
           .eq('id', threadId)
           .single();
@@ -141,43 +109,126 @@ export default async function handler(req: any, res: any) {
           return;
         }
 
-        // Calculate dynamic post metrics
-        const pMetrics = calculateDynamicMetrics(post);
-        post.impressions_count = pMetrics.impressions;
-        post.repost_count = pMetrics.reposts;
-        post.views_count = pMetrics.views;
-
-        const { data: replies } = await supabaseAdmin
-          .from('banter_comments')
+        // 1. Direct comments from banter_comments_enriched
+        const { data: comments } = await supabaseAdmin
+          .from('banter_comments_enriched')
           .select('*')
           .eq('post_id', threadId)
           .eq('status', 'active')
           .order('created_at', { ascending: true })
-          .limit(100);
+          .limit(200);
 
-        const updatedReplies = (replies || []).map((r: any) => {
-          const createdAtMs = r.created_at ? new Date(r.created_at).getTime() : Date.now();
-          const elapsedMinutes = Math.max(0, (Date.now() - createdAtMs) / (1000 * 60));
-          const rSeed = 6 + ((r.id ? r.id.charCodeAt(0) : 0) % 7);
-          const rTimeBonus = Math.floor(15 * Math.log(1 + elapsedMinutes * 0.1));
-          const rImpressions = Math.min(350, rSeed + rTimeBonus);
-          const rReposts = rImpressions > 45 ? Math.floor((rImpressions - 45) * 0.015) : 0;
+        let allComments = comments || [];
+        if (allComments.length > 0) {
+          const cIds = allComments.map((c: any) => c.id).filter(Boolean);
+          if (cIds.length > 0) {
+            const { data: nested } = await supabaseAdmin
+              .from('banter_comments_enriched')
+              .select('*')
+              .in('post_id', cIds)
+              .eq('status', 'active')
+              .limit(200);
+            if (nested && nested.length > 0) {
+              allComments = [...allComments, ...nested];
+            }
+          }
+        }
+
+        // 2. Replies from banter_posts_enriched
+        const { data: postReplies } = await supabaseAdmin
+          .from('banter_posts_enriched')
+          .select('*')
+          .or(`root_id.eq.${threadId},parent_id.eq.${threadId}`)
+          .eq('status', 'active')
+          .limit(200);
+
+        // Extract poll if present
+        let pollData: any = null;
+        if (post.poll_id) {
+          const { data: pollRow } = await supabaseAdmin
+            .from('banter_polls')
+            .select('*')
+            .eq('id', post.poll_id)
+            .maybeSingle();
+          if (pollRow) pollData = pollRow;
+        }
+        const pollComment = allComments.find((c: any) => c.author_handle === 'poll_bot' || (c.content && c.content.startsWith('[poll:')));
+        if (!pollData && pollComment) {
+          const match = pollComment.content.match(/^\[poll:(.*)\]$/);
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[1]);
+              pollData = {
+                id: `poll-${post.id}`,
+                postId: post.id,
+                question: parsed.q || 'Community Poll',
+                options: (parsed.o || []).map((o: string, i: number) => ({ id: i + 1, text: o, votes: 0 })),
+                totalVotes: 0,
+                voters: {}
+              };
+            } catch {}
+          }
+        }
+
+        // Filter out poll_bot and [poll:...] from user replies
+        const userComments = allComments.filter((c: any) => c.author_handle !== 'poll_bot' && !(c.content && c.content.startsWith('[poll:')));
+        const userPostReplies = (postReplies || []).filter((p: any) => p.id !== threadId);
+
+        const existingIds = new Set<string>();
+        const combinedReplies: any[] = [];
+        for (const c of userComments) {
+          if (!existingIds.has(c.id)) {
+            existingIds.add(c.id);
+            combinedReplies.push(c);
+          }
+        }
+        for (const pr of userPostReplies) {
+          if (!existingIds.has(pr.id)) {
+            existingIds.add(pr.id);
+            combinedReplies.push(pr);
+          }
+        }
+
+        combinedReplies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        const updatedReplies = combinedReplies.map((r: any) => {
+          const parentAuthor = (r.post_id === threadId || r.parent_id === threadId)
+            ? post.author_handle
+            : (combinedReplies.find(x => x.id === (r.post_id || r.parent_id))?.author_handle || post.author_handle);
+          const rType = r.media_type === 'VIDEO' ? 'video' : ((r.media_urls?.length || r.image_url) ? 'image' : 'text');
           return {
             ...r,
-            impressions_count: rImpressions,
-            repost_count: rReposts,
-            views_count: Math.max(1, Math.floor(rImpressions * 0.35))
+            type: rType,
+            types: [rType],
+            replying_to: parentAuthor,
+            replyingToHandle: parentAuthor,
+            impressions_count: r.impressions_count ?? r.impressions ?? 0,
+            repost_count: r.repost_count ?? r.reposts_count ?? 0,
+            views_count: r.views_count ?? r.views ?? 0
           };
         });
+
+        // Use database computed metrics directly without frontend simulation
+        post.impressions_count = post.impressions_count ?? post.impressions ?? 0;
+        post.repost_count = post.repost_count ?? post.reposts_count ?? 0;
+        post.views_count = post.views_count ?? post.views ?? 0;
+        post.comment_count = updatedReplies.length;
+        if (pollData) {
+          post.poll = pollData;
+          post.pollId = pollData.id;
+        }
+        const pType = pollData ? 'poll' : (post.media_type === 'VIDEO' ? 'video' : ((post.media_urls?.length || post.image_url) ? 'image' : 'text'));
+        post.type = pType;
+        post.types = [pType];
 
         res.statusCode = 200;
         res.end(JSON.stringify({ post, replies: updatedReplies }));
         return;
       }
 
-      // Fetch discourse / feed
+      // Fetch discourse / feed from enriched database view (zero simulation math)
       let query = supabaseAdmin
-        .from('banter_posts')
+        .from('banter_posts_enriched')
         .select('*')
         .eq('status', 'active');
 
@@ -195,30 +246,7 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
-      // Execute dynamic metrics calculation from elapsed time since sent and persist to database
-      const updatedPosts = (posts || []).map((p: any) => {
-        const metrics = calculateDynamicMetrics(p);
-        const needsUpdate =
-          p.impressions_count !== metrics.impressions ||
-          p.repost_count !== metrics.reposts ||
-          p.views_count !== metrics.views;
-
-        if (needsUpdate) {
-          p.impressions_count = metrics.impressions;
-          p.repost_count = metrics.reposts;
-          p.views_count = metrics.views;
-          supabaseAdmin
-            .from('banter_posts')
-            .update({
-              impressions_count: metrics.impressions,
-              repost_count: metrics.reposts,
-              views_count: metrics.views
-            })
-            .eq('id', p.id)
-            .then();
-        }
-        return p;
-      });
+      const updatedPosts = posts || [];
 
       res.statusCode = 200;
       res.end(JSON.stringify({ posts: updatedPosts }));
@@ -314,12 +342,38 @@ export default async function handler(req: any, res: any) {
             .eq('id', parentId);
         }
 
+        const parentAuthor = req.body?.replyingToHandle || null;
+        const rType = mediaType === 'VIDEO' ? 'video' : (uploadedMediaUrls.length > 0 ? 'image' : 'text');
+        reply.type = rType;
+        reply.types = [rType];
+        reply.replying_to = parentAuthor;
+        reply.replyingToHandle = parentAuthor;
+
         res.statusCode = 201;
         res.end(JSON.stringify({ reply }));
         return;
       }
 
       // Root message: stored in banter_posts (max 280 chars)
+      let pollObj: any = null;
+      let pollId: string | null = null;
+      if (poll && poll.options && poll.options.length >= 2) {
+        const sanitizedQ = sanitizeText(poll.question).slice(0, 70) || 'Community Poll';
+        const sanitizedOpts = poll.options.map((o: string) => sanitizeText(o).slice(0, 50)).filter(Boolean);
+        pollId = poll.id || ('poll-' + (id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now())));
+        pollObj = {
+          id: pollId,
+          postId: id || '',
+          question: sanitizedQ,
+          options: sanitizedOpts.map((opt: string, i: number) => ({ id: i + 1, text: opt, votes: 0 })),
+          totalVotes: 0,
+          voters: {},
+          expiresAt: new Date(Date.now() + 86400000).toISOString()
+        };
+      }
+
+      const declaredType = pollObj ? 'poll' : (mediaType === 'VIDEO' ? 'video' : (uploadedMediaUrls.length > 0 ? 'image' : 'text'));
+
       const validAuthorTypes = ['user', 'journalist', 'admin', 'seed'];
       const dbAuthorType = validAuthorTypes.includes(authorType) ? authorType : 'user';
       const dbBadge = authorType === 'coach' ? (sanitizedBadge || 'HEAD COACH') : sanitizedBadge;
@@ -343,6 +397,10 @@ export default async function handler(req: any, res: any) {
         repost_count: 0
       };
 
+      if (pollId) {
+        postPayload.poll_id = pollId;
+      }
+
       if (id && /^[0-9a-f-]{36}$/i.test(id)) {
         postPayload.id = id;
       }
@@ -359,23 +417,27 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
-      // If poll was sent, store it as a thread comment under this post to prevent injection
-      if (poll && poll.options && poll.options.length >= 2) {
-        const sanitizedQ = sanitizeText(poll.question).slice(0, 70);
-        const sanitizedOpts = poll.options.map((o: string) => sanitizeText(o).slice(0, 50)).filter(Boolean);
-        const pollContent = `[poll:${JSON.stringify({ q: sanitizedQ, o: sanitizedOpts })}]`.slice(0, 200);
+      if (pollObj) {
+        pollObj.postId = post.id;
         try {
-          await supabaseAdmin.from('banter_comments').insert([{
+          await supabaseAdmin.from('banter_polls').upsert([{
+            id: pollObj.id,
             post_id: post.id,
-            author_handle: 'poll_bot',
-            author_type: 'user',
-            content: pollContent,
-            status: 'active'
+            question: pollObj.question,
+            options: pollObj.options,
+            total_votes: 0,
+            voters: {},
+            expires_at: pollObj.expiresAt
           }]);
         } catch (pollErr) {
-          console.warn('Poll thread comment store deferred:', pollErr);
+          console.warn('Poll table store error:', pollErr);
         }
+        post.poll = pollObj;
+        post.pollId = pollObj.id;
       }
+
+      post.type = declaredType;
+      post.types = [declaredType];
 
       res.statusCode = 201;
       res.end(JSON.stringify({ post }));

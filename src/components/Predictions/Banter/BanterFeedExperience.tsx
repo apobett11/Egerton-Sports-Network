@@ -11,7 +11,7 @@ export const BanterFeedExperience: React.FC = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('banter_posts')
+        .from('banter_posts_enriched')
         .select('*')
         .is('parent_id', null)
         .order('created_at', { ascending: false })

@@ -30,68 +30,14 @@ export function calculateDynamicMetrics(post: {
   commentCount?: number;
   parent_id?: string | null;
   parentId?: string | null;
+  is_trending?: boolean;
+  isTrending?: boolean;
 }): PostAlgorithmMetrics {
-  const isReply = Boolean(post.parent_id || post.parentId);
-  const createdRaw = post.created_at || post.createdAt;
-  const createdAtMs = createdRaw ? new Date(createdRaw).getTime() : Date.now();
-  const now = Date.now();
-  const elapsedMinutes = Math.max(0, (now - createdAtMs) / (1000 * 60));
-
-  const idStr = post.id || 'msg';
-  const idHash = (idStr.charCodeAt(0) || 0) + (idStr.charCodeAt(idStr.length - 1) || 0);
-
-  if (isReply) {
-    // Reply messages: start lower (6-12), rise gradually with time
-    const replySeed = 6 + (idHash % 7);
-    const replyTimeBonus = Math.floor(15 * Math.log(1 + elapsedMinutes * 0.1));
-    const replyImpressions = Math.min(350, replySeed + replyTimeBonus);
-    const replyViews = Math.max(1, Math.floor(replyImpressions * 0.35));
-    // Reposts start at 0, only rise if impressions > 45
-    const replyReposts = replyImpressions > 45 ? Math.floor((replyImpressions - 45) * 0.015) : 0;
-    return {
-      impressions: replyImpressions,
-      reposts: replyReposts,
-      views: replyViews,
-      isTrending: false
-    };
-  }
-
-  // Root post:
-  // Initial baseline organic seed (18 to 35)
-  const baseSeed = 18 + (idHash % 18);
-
-  // Time decay / velocity curve based on time elapsed since sent:
-  const timeBonus = Math.floor(45 * Math.log(1 + elapsedMinutes * 0.15));
-
-  // Engagement bonuses from real reactions & replies
-  const fires = post.reaction_fire_count || (post as any).reactionFireCount || 0;
-  const clowns = (post as any).reaction_clown_count || post.reactionClownCount || 0;
-  const skulls = (post as any).reaction_skull_count || post.reactionSkullCount || 0;
-  const comments = post.comment_count || post.commentCount || 0;
-  const engagementBonus = (fires * 14) + (clowns * 6) + (skulls * 6) + (comments * 22);
-
-  const existingImpr = post.impressions_count ?? post.impressionsCount ?? 0;
-  let impressions = Math.max(existingImpr || baseSeed, baseSeed + timeBonus + engagementBonus);
-
-  // Regulate normal range (capped at 1500) and top space trending range (1501-1940)
-  const isTrending = impressions > 1500;
-  if (isTrending) {
-    impressions = Math.min(1940, impressions);
-  } else {
-    impressions = Math.min(1500, impressions);
-  }
-
-  // Reposts naturally start from zero. Depending on real impressions, they rise accordingly:
-  // Under 45 impressions: strictly 0
-  // Above 45 impressions: rises gradually with impressions + fraction of fire reactions
-  let reposts = 0;
-  if (impressions > 45) {
-    reposts = Math.floor((impressions - 45) * 0.02) + Math.floor(fires * 0.15);
-  }
-
-  const existingViews = post.views_count ?? post.viewsCount ?? 1;
-  const views = Math.max(existingViews, Math.floor(impressions * 0.42));
-
+  // Pure passthrough: all metrics are calculated and controlled strictly in the PostgreSQL database layer (banter_posts_enriched)
+  const impressions = post.impressions_count ?? post.impressionsCount ?? 0;
+  const reposts = post.repost_count ?? post.repostCount ?? 0;
+  const views = post.views_count ?? post.viewsCount ?? (impressions > 0 ? Math.floor(impressions * 0.42) : 0);
+  const isTrending = Boolean(post.is_trending ?? post.isTrending ?? (impressions > 1500));
   return { impressions, reposts, views, isTrending };
 }
 import {
@@ -111,11 +57,15 @@ import type {
   BanterPoll,
   BanterPollOption,
   BanterMediaType,
+  BanterPostType,
   JournalistAnalytics
 } from '../../types/predictions';
 
 export interface CreatePostOptions {
   id?: string;
+  type?: BanterPostType | BanterPostType[];
+  types?: BanterPostType[];
+  replyingToHandle?: string | null;
   content: string;
   parentId?: string | null;
   rootId?: string | null;
@@ -143,6 +93,116 @@ export interface CreatePostOptions {
 // -------------------------------------------------------------
 // Pure Helpers for Video Validation & Thread Calculation (Exported for Unit Tests)
 // -------------------------------------------------------------
+
+export function determinePostType(post: Partial<BanterPost> | any): BanterPostType {
+  const hasPoll = Boolean(
+    post.poll ||
+    post.pollId ||
+    post.poll_id ||
+    post.type === 'poll' ||
+    (Array.isArray(post.type) && post.type.includes('poll')) ||
+    (Array.isArray(post.types) && post.types.includes('poll')) ||
+    (post.content && post.content.includes('[poll:'))
+  );
+  if (hasPoll) return 'poll';
+
+  const mType = post.mediaType || post.media_type;
+  const mUrls: string[] = post.mediaUrls || post.media_urls || (post.imageUrl ? [post.imageUrl] : (post.image_url ? [post.image_url] : []));
+
+  if (mType === 'VIDEO' || mUrls.some(u => typeof u === 'string' && (u.includes('.mp4') || u.startsWith('data:video/'))) || (post.content && post.content.includes('[media:video:'))) {
+    return 'video';
+  }
+  if (
+    mType === 'IMAGE' ||
+    mType === 'DUAL_IMAGE' ||
+    mUrls.length > 0 ||
+    post.imageUrl ||
+    post.image_url ||
+    (post.content && post.content.includes('[media:image:'))
+  ) {
+    return 'image';
+  }
+  return 'text';
+}
+
+export function determinePostTypes(post: Partial<BanterPost> | any): BanterPostType[] {
+  const types: BanterPostType[] = [];
+  const primary = determinePostType(post);
+  types.push(primary);
+  if (primary !== 'text' && post.content && post.content.trim().length > 0) {
+    types.push('text');
+  }
+  return types;
+}
+
+export async function uploadMediaToBucket(
+  dataUrlOrFile: string | File | Blob,
+  mediaType?: string
+): Promise<string> {
+  if (typeof dataUrlOrFile === 'string' && !dataUrlOrFile.startsWith('data:')) {
+    return dataUrlOrFile;
+  }
+  try {
+    let fileBody: Blob | File;
+    let mimeType = 'image/jpeg';
+    let ext = 'jpg';
+
+    if (typeof dataUrlOrFile === 'string') {
+      const match = dataUrlOrFile.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) return dataUrlOrFile;
+      mimeType = match[1];
+      const base64Data = match[2];
+      const byteCharacters = typeof atob !== 'undefined' ? atob(base64Data) : (typeof Buffer !== 'undefined' ? Buffer.from(base64Data, 'base64').toString('binary') : '');
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      fileBody = new Blob([byteArray], { type: mimeType });
+      ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || (mimeType.startsWith('video/') ? 'mp4' : 'jpg');
+    } else {
+      fileBody = dataUrlOrFile;
+      mimeType = dataUrlOrFile.type || (mediaType === 'VIDEO' ? 'video/mp4' : 'image/jpeg');
+      ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || (mimeType.startsWith('video/') ? 'mp4' : 'jpg');
+    }
+
+    const fileName = `media-${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
+    const client = supabaseBanterAdmin || supabase;
+
+    let uploadRes = await client.storage
+      .from('banter-media')
+      .upload(fileName, fileBody, {
+        contentType: mimeType,
+        upsert: true
+      });
+
+    let bucketName = 'banter-media';
+    if (uploadRes.error) {
+      const fallbackRes = await client.storage
+        .from('media')
+        .upload(fileName, fileBody, {
+          contentType: mimeType,
+          upsert: true
+        });
+      if (!fallbackRes.error && fallbackRes.data) {
+        uploadRes = fallbackRes;
+        bucketName = 'media';
+      }
+    }
+
+    if (!uploadRes.error && uploadRes.data) {
+      const { data: publicUrlData } = client.storage
+        .from(bucketName)
+        .getPublicUrl(fileName);
+      if (publicUrlData?.publicUrl) {
+        return publicUrlData.publicUrl;
+      }
+    }
+  } catch (err) {
+    console.warn('Bucket media upload fallback, using original:', err);
+  }
+  return typeof dataUrlOrFile === 'string' ? dataUrlOrFile : '';
+}
 
 export function sanitizePostText(raw: string): string {
   if (!raw) return '';
@@ -808,7 +868,7 @@ export class BanterService {
       const isUuid = /^[0-9a-f-]{36}$/i.test(resolvedId);
       if (isUuid) {
         const { data, error } = await client
-          .from('banter_posts')
+          .from('banter_posts_enriched')
           .select('*')
           .eq('id', resolvedId)
           .maybeSingle();
@@ -818,29 +878,20 @@ export class BanterService {
           if (data.poll_id) {
             await this.syncPollsForDevice([data.poll_id], devId);
           }
-          const metrics = calculateDynamicMetrics(data);
-          data.impressions_count = metrics.impressions;
-          data.repost_count = metrics.reposts;
-          data.views_count = metrics.views;
           const mapped = this.mapDatabaseRowToPost(data, {}, devId);
           this.registerPost(mapped);
           return mapped;
         }
 
-        // If not in banter_posts, look up in banter_comments
+        // If not in banter_posts_enriched, look up in banter_comments_enriched
         const { data: cData, error: cErr } = await client
-          .from('banter_comments')
+          .from('banter_comments_enriched')
           .select('*')
           .eq('id', resolvedId)
           .maybeSingle();
 
         if (!cErr && cData) {
           const parsedMedia = parseMediaFromContent(cData.content || '');
-          const metrics = calculateDynamicMetrics({
-            id: cData.id,
-            created_at: cData.created_at,
-            parent_id: cData.post_id
-          });
           const mappedComment: BanterPost = {
             id: cData.id,
             parentId: cData.post_id,
@@ -856,14 +907,17 @@ export class BanterService {
             mediaUrls: parsedMedia.mediaUrls,
             mediaType: parsedMedia.mediaType,
             imageUrl: parsedMedia.mediaUrls[0] || undefined,
-            reactionFireCount: 0,
+            likesCount: cData.likes_count ?? cData.reaction_fire_count ?? 0,
+            reactionFireCount: cData.reaction_fire_count ?? cData.likes_count ?? 0,
             reactionClownCount: 0,
             reactionSkullCount: 0,
             commentCount: 0,
             repliesCount: 0,
-            repostCount: metrics.reposts,
-            impressionsCount: metrics.impressions,
-            viewsCount: metrics.views,
+            repostCount: cData.repost_count ?? cData.reposts_count ?? 0,
+            repostsCount: cData.repost_count ?? cData.reposts_count ?? 0,
+            impressionsCount: cData.impressions_count ?? cData.impressions ?? 0,
+            impressions: cData.impressions_count ?? cData.impressions ?? 0,
+            viewsCount: cData.views_count ?? cData.views ?? 0,
             createdAt: cData.created_at,
           };
           this.registerPost(mappedComment);
@@ -872,7 +926,7 @@ export class BanterService {
       } else {
         // Look up by clean ref in recent active posts
         const { data: recentPosts } = await client
-          .from('banter_posts')
+          .from('banter_posts_enriched')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(100);
@@ -881,10 +935,6 @@ export class BanterService {
           const matched = recentPosts.find((p: any) => getCleanMessageRef(p.id) === resolvedId || p.id === resolvedId);
           if (matched) {
             this.registerPostRef(matched.id, resolvedId);
-            const metrics = calculateDynamicMetrics(matched);
-            matched.impressions_count = metrics.impressions;
-            matched.repost_count = metrics.reposts;
-            matched.views_count = metrics.views;
             return this.mapDatabaseRowToPost(matched, {}, devId);
           }
         }
@@ -916,7 +966,7 @@ export class BanterService {
 
     try {
       let query = client
-        .from('banter_posts')
+        .from('banter_posts_enriched')
         .select('*')
         .eq('status', 'active');
 
@@ -970,16 +1020,10 @@ export class BanterService {
         void this.syncPollsForDevice(pollIds, devId).catch(() => {});
       }
 
-      // Execute dynamic metrics calculation from elapsed time since sent (Read-only presentation, zero DB write on scroll)
+      // Zero Frontend Math: presentation metrics are fetched directly from database (banter_posts_enriched)
       const posts: BanterPost[] = rawDbPosts
         .filter((d: any) => !isTestPost(d))
-        .map((d: any) => {
-          const metrics = calculateDynamicMetrics(d);
-          d.impressions_count = Math.max(d.impressions_count || 0, metrics.impressions);
-          d.repost_count = Math.max(d.repost_count || 0, metrics.reposts);
-          d.views_count = Math.max(d.views_count || 0, metrics.views);
-          return this.mapDatabaseRowToPost(d, userReactions, devId);
-        });
+        .map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
 
       // Merge local posts that are not in database yet (e.g. pending optimistic posts)
       const unSyncedLocal = this.localPosts.filter(
@@ -1020,18 +1064,16 @@ export class BanterService {
       void this.syncPollsForDevice(fallbackPollIds, devId).catch(() => {});
     }
 
-    all = all.map(p => {
-      const metrics = calculateDynamicMetrics(p);
-      return {
-        ...p,
-        poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined,
-        repostCount: metrics.reposts,
-        impressionsCount: metrics.impressions,
-        impressions: metrics.impressions,
-        viewsCount: metrics.views,
-        userReactions: userReactions[p.id] || {}
-      };
-    });
+    all = all.map(p => ({
+      ...p,
+      poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined,
+      repostCount: p.repostCount ?? p.repostsCount ?? 0,
+      repostsCount: p.repostCount ?? p.repostsCount ?? 0,
+      impressionsCount: p.impressionsCount ?? p.impressions ?? 0,
+      impressions: p.impressionsCount ?? p.impressions ?? 0,
+      viewsCount: p.viewsCount ?? 0,
+      userReactions: userReactions[p.id] || {}
+    }));
 
     return applyBanterFilter(all, filter).slice(offset, offset + limit);
   }
@@ -1069,68 +1111,129 @@ export class BanterService {
       }
     }
 
-    // Section Load: Load direct replies for this thread from banter_comments in database
-    // When the replies are zero, no calls are done
-    const replyCount = activePost ? (activePost.commentCount ?? activePost.repliesCount ?? 0) : 0;
+    // Section Load: Load all direct and nested replies for this thread
     let replies: BanterPost[] = [];
+    const client = supabaseBanterAdmin || supabase;
+    const isUuid = /^[0-9a-f-]{36}$/i.test(effectivePostId);
 
-    if (replyCount > 0) {
+    if (isUuid) {
       try {
-        const isUuid = /^[0-9a-f-]{36}$/i.test(effectivePostId);
-        if (isUuid) {
-          const client = supabaseBanterAdmin || supabase;
-          const { data, error } = await client
-            .from('banter_comments')
-            .select('*')
-            .eq('post_id', effectivePostId)
-            .eq('status', 'active')
-            .order('created_at', { ascending: true })
-            .limit(100);
+        // 1. Direct comments from banter_comments_enriched
+        const { data: directComments } = await client
+          .from('banter_comments_enriched')
+          .select('*')
+          .eq('post_id', effectivePostId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: true })
+          .limit(200);
 
-          if (!error && data && data.length > 0) {
-            replies = data
-              .filter((d: any) => !isTestPost(d))
-              .map((d: any) => {
-                const parsedMedia = parseMediaFromContent(d.content || '');
-                let aType = d.author_type || 'user';
-                let aBadge = d.author_badge;
-                if (aType === 'coach' || (aBadge || '').toLowerCase().includes('coach')) {
-                  aType = 'coach';
-                }
-                const metrics = calculateDynamicMetrics({
-                  id: d.id,
-                  created_at: d.created_at,
-                  parent_id: d.post_id
-                });
-                return {
-                  id: d.id,
-                  parentId: d.post_id,
-                  rootId: d.post_id,
-                  depth: 1,
-                  userId: d.device_id,
-                  authorDeviceId: d.device_id,
-                  author_device_id: d.device_id,
-                  authorHandle: d.author_handle || 'Fanatic',
-                  authorName: (d.author_handle || 'Fanatic').split(' #')[0],
-                  authorType: aType,
-                  authorBadge: aBadge,
-                  content: parsedMedia.cleanContent || d.content,
-                  mediaUrls: parsedMedia.mediaUrls,
-                  mediaType: parsedMedia.mediaType,
-                  imageUrl: parsedMedia.mediaUrls[0] || undefined,
-                  sourceType: 'user' as const,
-                  reactionFireCount: 0,
-                  reactionClownCount: 0,
-                  reactionSkullCount: 0,
-                  commentCount: 0,
-                  repliesCount: 0,
-                  repostCount: metrics.reposts,
-                  impressionsCount: metrics.impressions,
-                  viewsCount: metrics.views,
-                  createdAt: d.created_at,
-                  userReactions: userReactions[d.id] || {}
-                };
-              });
+        let allComments = directComments || [];
+        // If there are direct comments, check for nested/child comments in banter_comments_enriched
+        if (allComments.length > 0) {
+          const directIds = allComments.map((c: any) => c.id).filter(Boolean);
+          if (directIds.length > 0) {
+            const { data: nestedComments } = await client
+              .from('banter_comments_enriched')
+              .select('*')
+              .in('post_id', directIds)
+              .eq('status', 'active')
+              .order('created_at', { ascending: true })
+              .limit(200);
+            if (nestedComments && nestedComments.length > 0) {
+              allComments = [...allComments, ...nestedComments];
+            }
+          }
+        }
+
+        // 2. Replies stored in banter_posts_enriched (parent_id or root_id)
+        const { data: postReplies } = await client
+          .from('banter_posts_enriched')
+          .select('*')
+          .or(`root_id.eq.${effectivePostId},parent_id.eq.${effectivePostId}`)
+          .eq('status', 'active')
+          .order('created_at', { ascending: true })
+          .limit(200);
+
+        // Check for legacy poll comment and extract if activePost has no poll
+        const pollComment = allComments.find((c: any) => c.author_handle === 'poll_bot' || (c.content && c.content.startsWith('[poll:')));
+        if (pollComment && activePost && !activePost.poll) {
+          const match = pollComment.content.match(/^\[poll:(.*)\]$/);
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[1]);
+              activePost.poll = {
+                id: `poll-${activePost.id}`,
+                postId: activePost.id,
+                question: parsed.q || 'Community Poll',
+                options: (parsed.o || []).map((text: string, idx: number) => ({ id: idx + 1, text, votes: 0 })),
+                totalVotes: 0,
+                voters: {},
+                expiresAt: new Date(Date.now() + 86400000).toISOString()
+              };
+              activePost.pollId = activePost.poll.id;
+              activePost.type = 'poll';
+            } catch {}
+          }
+        }
+
+        // Filter out poll_bot and test comments from user replies
+        const userComments = allComments.filter((c: any) => c.author_handle !== 'poll_bot' && !(c.content && c.content.startsWith('[poll:')) && !isTestPost(c));
+        const userPostReplies = (postReplies || []).filter((p: any) => p.id !== effectivePostId && !isTestPost(p));
+
+        const mappedComments: BanterPost[] = userComments.map((d: any) => {
+          const parsedMedia = parseMediaFromContent(d.content || '');
+          let aType = d.author_type || 'user';
+          let aBadge = d.author_badge;
+          if (aType === 'coach' || (aBadge || '').toLowerCase().includes('coach')) {
+            aType = 'coach';
+          }
+          const mUrls = parsedMedia.mediaUrls || [];
+          const mType = parsedMedia.mediaType;
+          const pType: BanterPostType = mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text');
+          return {
+            id: d.id,
+            type: pType,
+            types: [pType],
+            parentId: d.post_id,
+            rootId: effectivePostId,
+            depth: d.post_id === effectivePostId ? 1 : 2,
+            userId: d.device_id,
+            authorDeviceId: d.device_id,
+            author_device_id: d.device_id,
+            authorHandle: d.author_handle || 'Fanatic',
+            authorName: (d.author_handle || 'Fanatic').split(' #')[0],
+            authorType: aType,
+            authorBadge: aBadge,
+            content: parsedMedia.cleanContent || d.content,
+            mediaUrls: mUrls,
+            mediaType: mType,
+            imageUrl: mUrls[0] || undefined,
+            sourceType: 'user' as const,
+            likesCount: d.likes_count ?? d.reaction_fire_count ?? 0,
+            reactionFireCount: d.reaction_fire_count ?? d.likes_count ?? 0,
+            reactionClownCount: 0,
+            reactionSkullCount: 0,
+            commentCount: 0,
+            repliesCount: 0,
+            repostCount: d.repost_count ?? d.reposts_count ?? 0,
+            repostsCount: d.repost_count ?? d.reposts_count ?? 0,
+            impressionsCount: d.impressions_count ?? d.impressions ?? 0,
+            impressions: d.impressions_count ?? d.impressions ?? 0,
+            viewsCount: d.views_count ?? d.views ?? 0,
+            createdAt: d.created_at,
+            userReactions: userReactions[d.id] || {}
+          };
+        });
+
+        const mappedPostsReplies: BanterPost[] = userPostReplies.map((d: any) =>
+          this.mapDatabaseRowToPost(d, userReactions, devId)
+        );
+
+        const existingIds = new Set<string>();
+        for (const r of [...mappedComments, ...mappedPostsReplies]) {
+          if (!existingIds.has(r.id)) {
+            existingIds.add(r.id);
+            replies.push(r);
           }
         }
       } catch {
@@ -1138,15 +1241,59 @@ export class BanterService {
       }
     }
 
-    // Include local replies directly attached to this post (not yet in remote DB)
+    // Include local replies directly attached to this post or deep replies
+    const existingIds = new Set<string>(replies.map(r => r.id));
     const localReplies = this.localPosts
-      .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id) && !isTestPost(p))
+      .filter((p) => {
+        if (isTestPost(p)) return false;
+        if (p.id === effectivePostId) return false;
+        if (p.authorHandle === 'poll_bot') return false;
+        if (p.content && p.content.startsWith('[poll:')) return false;
+        return (
+          p.parentId === effectivePostId ||
+          p.rootId === effectivePostId ||
+          (p.parentId && existingIds.has(p.parentId))
+        );
+      })
+      .filter((p) => !existingIds.has(p.id))
       .map((p) => ({
         ...p,
+        type: p.type || determinePostType(p),
+        types: p.types || determinePostTypes(p),
         userReactions: userReactions[p.id] || {}
       }));
 
     replies = [...replies, ...localReplies];
+
+    // Sort chronologically
+    replies.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    // Ensure replyingToHandle is populated on ALL replies
+    replies = replies.map((r) => {
+      if (r.replyingToHandle) return r;
+      if (r.parentId && r.parentId !== effectivePostId) {
+        const parent = replies.find(x => x.id === r.parentId) || ancestry.find(x => x.id === r.parentId);
+        if (parent && parent.authorHandle) {
+          return { ...r, replyingToHandle: parent.authorHandle };
+        }
+      }
+      return { ...r, replyingToHandle: activePost?.authorHandle || 'author' };
+    });
+
+    // Reconcile authoritative replies count
+    const totalActualReplies = replies.length;
+    if (activePost) {
+      activePost.commentCount = totalActualReplies;
+      activePost.repliesCount = totalActualReplies;
+      activePost.type = activePost.type || determinePostType(activePost);
+      activePost.types = activePost.types || determinePostTypes(activePost);
+      this.knownPostsMap.set(activePost.id, activePost);
+      this.localPosts = this.localPosts.map(p => p.id === activePost.id ? { ...p, commentCount: totalActualReplies, repliesCount: totalActualReplies } : p);
+      setStoredItem('egerscore_local_banter_posts', this.localPosts);
+      if (isUuid) {
+        client.from('banter_posts').update({ comment_count: totalActualReplies }).eq('id', activePost.id).then();
+      }
+    }
 
     // Collect poll IDs from active post, ancestry, and only fetched replies (avoid N+1)
     const threadPollIds: string[] = [];
@@ -1224,6 +1371,18 @@ export class BanterService {
       finalMediaType = 'DUAL_IMAGE';
     }
 
+    // Upload any base64 data URLs to Supabase Storage bucket
+    const uploadedMediaUrls: string[] = [];
+    for (const url of mediaUrls) {
+      if (url.startsWith('data:')) {
+        const publicUrl = await uploadMediaToBucket(url, finalMediaType);
+        uploadedMediaUrls.push(publicUrl);
+      } else {
+        uploadedMediaUrls.push(url);
+      }
+    }
+    mediaUrls = uploadedMediaUrls;
+
     // Format content with media tags keeping within check constraints
     const maxChars = opts.parentId ? 200 : 280;
     let formattedContent = sanitizedContent;
@@ -1245,9 +1404,13 @@ export class BanterService {
       formattedContent = 'Matchday take';
     }
 
-    // Baseline engagement numbers computed by algorithm in database
-    const baselineImpressions = Math.floor(18 + Math.random() * 24); // 18-42 baseline organic impressions
-    const baselineViews = Math.max(1, Math.floor(baselineImpressions * 0.4));
+    // Determine post types
+    const declaredType: BanterPostType = hasPoll ? 'poll' : (finalMediaType === 'VIDEO' ? 'video' : (mediaUrls.length > 0 ? 'image' : 'text'));
+    const declaredTypes: BanterPostType[] = [declaredType];
+
+    // Strict Start at 0: Real raw metrics begin at 0. Database calculates smooth S-curve dynamically.
+    const baselineImpressions = 0;
+    const baselineViews = 0;
     const baselineReposts = 0;
 
     const validAuthorTypes = ['user', 'journalist', 'admin', 'seed'];
@@ -1266,6 +1429,7 @@ export class BanterService {
           body: JSON.stringify({
             id: postId,
             parentId: opts.parentId,
+            replyingToHandle: opts.replyingToHandle,
             content: formattedContent,
             authorHandle: effectiveAuthorHandle,
             authorType: dbAuthorType,
@@ -1322,11 +1486,15 @@ export class BanterService {
         throw new Error('Database write failed for reply message.');
       }
 
+      const replyType: BanterPostType = finalMediaType === 'VIDEO' ? 'video' : (mediaUrls.length > 0 ? 'image' : 'text');
       const replyPost: BanterPost = {
         id: savedDbRow.id,
+        type: replyType,
+        types: [replyType],
         parentId: opts.parentId,
         rootId: opts.rootId || opts.parentId,
         depth: 1,
+        replyingToHandle: opts.replyingToHandle || null,
         userId: effectiveDeviceId,
         authorDeviceId: effectiveDeviceId,
         author_device_id: effectiveDeviceId,
@@ -1352,8 +1520,10 @@ export class BanterService {
         commentCount: 0,
         repliesCount: 0,
         repostCount: 0,
-        impressionsCount: 1,
-        viewsCount: 1,
+        repostsCount: 0,
+        impressionsCount: 0,
+        impressions: 0,
+        viewsCount: 0,
         isMine: true,
         createdAt: savedDbRow.created_at || new Date().toISOString(),
         userReactions: {}
@@ -1365,6 +1535,24 @@ export class BanterService {
     }
 
     // Handle Root Post
+    let pollObj: BanterPoll | null = null;
+    let pollId: string | null = null;
+    if (opts.poll && opts.poll.options && opts.poll.options.length >= 2) {
+      const sanitizedQ = sanitizePostText(opts.poll.question).slice(0, 70) || 'Community Poll';
+      const sanitizedOpts = opts.poll.options.map(o => sanitizePostText(o).slice(0, 50)).filter(Boolean);
+      pollId = opts.poll.id || (postId ? `poll-${postId}` : `poll-${Date.now()}`);
+      pollObj = {
+        id: pollId,
+        postId: postId || '',
+        question: sanitizedQ,
+        options: sanitizedOpts.map((optText, idx) => ({ id: idx + 1, text: optText, votes: 0 })),
+        totalVotes: 0,
+        voters: {},
+        expiresAt: new Date(Date.now() + 86400000).toISOString()
+      };
+      this.savePoll(pollObj);
+    }
+
     // 1. Try server-side API first
     try {
       const res = await fetch('/api/messages', {
@@ -1409,6 +1597,7 @@ export class BanterService {
         repost_count: baselineReposts
       };
       if (postId) postPayload.id = postId;
+      if (pollId) postPayload.poll_id = pollId;
 
       const { data, error } = await supabaseBanterAdmin
         .from('banter_posts')
@@ -1426,42 +1615,30 @@ export class BanterService {
       throw new Error('Database write failed. Post was not stored.');
     }
 
-    // Poll Attachment (stored as thread comment under the post to prevent injection)
-    let pollObj: BanterPoll | null = null;
-    if (opts.poll && opts.poll.options && opts.poll.options.length >= 2) {
-      const sanitizedQ = sanitizePostText(opts.poll.question).slice(0, 70) || 'Community Poll';
-      const sanitizedOpts = opts.poll.options.map(o => sanitizePostText(o).slice(0, 50)).filter(Boolean);
-      pollObj = {
-        id: opts.poll.id || `poll-${savedDbRow.id}`,
-        postId: savedDbRow.id,
-        question: sanitizedQ,
-        options: sanitizedOpts.map((optText, idx) => ({ id: idx + 1, text: optText, votes: 0 })),
-        totalVotes: 0,
-        voters: {},
-        expiresAt: new Date(Date.now() + 86400000).toISOString()
-      };
-      this.savePoll(pollObj);
-
-      // Store poll in thread comment in banter_comments
-      if (supabaseBanterAdmin) {
-        try {
-          const pollComment = `[poll:${JSON.stringify({ q: sanitizedQ, o: sanitizedOpts })}]`.slice(0, 200);
-          await supabaseBanterAdmin.from('banter_comments').insert([{
-            post_id: savedDbRow.id,
-            author_handle: 'poll_bot',
-            author_type: 'user',
-            content: pollComment,
-            status: 'active'
-          }]);
-        } catch (pollErr) {
-          console.warn('Thread poll comment store deferred:', pollErr);
-        }
+    // Persist poll into banter_polls table directly
+    if (pollObj && supabaseBanterAdmin) {
+      pollObj.postId = savedDbRow.id;
+      try {
+        await supabaseBanterAdmin.from('banter_polls').upsert([{
+          id: pollObj.id,
+          post_id: savedDbRow.id,
+          question: pollObj.question,
+          options: pollObj.options,
+          total_votes: 0,
+          voters: {},
+          expires_at: pollObj.expiresAt
+        }]);
+        await supabaseBanterAdmin.from('banter_posts').update({ poll_id: pollObj.id }).eq('id', savedDbRow.id);
+      } catch (pollErr) {
+        console.warn('Poll table persist deferred:', pollErr);
       }
     }
 
     // Build the confirmed post with its DB numbers attached directly
     const finalPost: BanterPost = {
       id: savedDbRow.id,
+      type: declaredType,
+      types: declaredTypes,
       parentId: null,
       rootId: savedDbRow.id,
       depth: 0,
@@ -2018,6 +2195,25 @@ export class BanterService {
     const mediaType = d.media_type || (parsedMedia.mediaType !== 'NONE' ? parsedMedia.mediaType : (mediaUrls.length > 1 ? 'DUAL_IMAGE' : (mediaUrls.length === 1 ? 'IMAGE' : 'NONE')));
     const pollId = d.poll_id || null;
     let poll = pollId ? this.getPollById(pollId) : undefined;
+
+    if (!poll && cleanContent && cleanContent.includes('[poll:')) {
+      const match = cleanContent.match(/\[poll:(.*?)\]/);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[1]);
+          poll = {
+            id: pollId || `poll-${d.id}`,
+            postId: d.id,
+            question: parsed.q || 'Community Poll',
+            options: (parsed.o || []).map((text: string, idx: number) => ({ id: idx + 1, text, votes: 0 })),
+            totalVotes: 0,
+            voters: {},
+            expiresAt: new Date(Date.now() + 86400000).toISOString()
+          };
+        } catch {}
+      }
+    }
+
     if (poll && deviceId && !poll.voters[deviceId]) {
       const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(`egerscore_poll_voted_${poll.id}`) : null;
       if (stored) {
@@ -2031,11 +2227,21 @@ export class BanterService {
       }
     }
 
+    const hasPoll = Boolean(pollId || poll || (cleanContent && cleanContent.includes('[poll:')));
+    const hasVideo = mediaType === 'VIDEO' || mediaUrls.some((u: string) => typeof u === 'string' && u.includes('.mp4'));
+    const hasImage = mediaType === 'IMAGE' || mediaType === 'DUAL_IMAGE' || mediaUrls.length > 0 || Boolean(d.image_url);
+    const postType: BanterPostType = hasPoll ? 'poll' : (hasVideo ? 'video' : (hasImage ? 'image' : 'text'));
+    const postTypes: BanterPostType[] = [postType];
+    if (postType !== 'text' && cleanContent && cleanContent.length > 0) postTypes.push('text');
+
     return {
       id: d.id,
+      type: d.type || postType,
+      types: d.types || postTypes,
       parentId: d.parent_id || null,
       rootId: d.root_id || d.id,
       depth: d.depth || 0,
+      replyingToHandle: d.replying_to_handle || d.replyingToHandle || null,
       userId: d.user_id || d.device_id,
       matchId: d.match_id,
       leagueId: d.league_id,

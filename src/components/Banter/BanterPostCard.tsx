@@ -43,108 +43,6 @@ function formatTwitterMetric(num: number): string {
 
 const MAX_VIEW_CHARS = 160;
 
-function computePostEngagement(post: BanterPost) {
-  const isMessage = Boolean(post.parentId || (post.rootId && post.rootId !== post.id));
-  const isTrending = Boolean(post.isTrending && !isMessage);
-
-  // Deterministic seed from post id
-  let hash = 0;
-  const idStr = String(post.id || 'seed');
-  for (let i = 0; i < idStr.length; i++) {
-    hash = (hash << 5) - hash + idStr.charCodeAt(i);
-    hash |= 0;
-  }
-  const seed = Math.abs(hash);
-
-  // Age calculation in seconds
-  const createdTs = new Date(post.createdAt || Date.now()).getTime();
-  const now = Date.now();
-  const ageSec = Math.max(0, (now - createdTs) / 1000);
-
-  // Saturation period varies per post between 10 and 24 hours
-  const saturationHours = 10 + ((seed >> 2) % 15); // 10 to 24 hours
-  const saturationSec = saturationHours * 3600;
-
-  // Varied growth curve per post (0.80 to 1.15) for natural organic rise variance
-  const curvePow = 0.8 + ((seed % 8) * 0.05);
-
-  // Target maximum impressions
-  let targetImpressions: number;
-  let maxReposts: number;
-  let minStartImpressions: number;
-
-  if (isTrending) {
-    targetImpressions = 1550 + (seed % 1450); // 1,550 - 3,000 views
-    maxReposts = Math.max(16, Math.floor(targetImpressions / 50) + (seed % 18));
-    minStartImpressions = 75 + (seed % 45); // initial baseline for trending
-  } else {
-    targetImpressions = 320 + (seed % 680); // 320 - 1,000 views
-    maxReposts = seed % 3; // 0, 1, or 2 for normal posts
-    minStartImpressions = 18 + (seed % 22); // initial baseline for normal (never zero)
-  }
-
-  // When a user immediately sends, repost, impressions, replies all begin at 0
-  const isBrandNew = post.isMine && ageSec < 10;
-  const isEarlyMine = post.isMine && ageSec < 60;
-
-  let impressions: number;
-  let baseReposts: number;
-
-  if (isBrandNew) {
-    impressions = 0;
-    baseReposts = 0;
-  } else if (isEarlyMine) {
-    // Early gradual ramp in first minute from 0 towards minStartImpressions
-    const ramp = ageSec / 60;
-    impressions = Math.max(1, Math.floor(ramp * minStartImpressions));
-    baseReposts = 0;
-  } else {
-    // Gradual, steady rise for the next 10 - 24 hours, not all placed at once
-    const progress = Math.min(1, Math.pow(Math.min(1, ageSec / saturationSec), curvePow));
-
-    // Micro-variation so rise rate fluctuates organically across 30-min intervals
-    const timeBucket = Math.floor(ageSec / 1800);
-    const microJitter = ((seed ^ timeBucket) % 5) - 2;
-
-    impressions = Math.max(
-      minStartImpressions,
-      Math.min(targetImpressions, Math.floor(minStartImpressions + progress * (targetImpressions - minStartImpressions) + microJitter))
-    );
-
-    // Reposts climb directly proportional to impressions progress
-    if (isTrending) {
-      baseReposts = Math.max(0, Math.floor(progress * maxReposts));
-    } else {
-      // Normal posts: 0 early on, low (1 or 2) as impressions climb
-      if (progress < 0.35) {
-        baseReposts = 0;
-      } else if (progress < 0.75) {
-        baseReposts = Math.min(1, maxReposts);
-      } else {
-        baseReposts = maxReposts;
-      }
-    }
-  }
-
-  // Preserve database-stored metrics if present
-  if (post.impressionsCount !== undefined && post.impressionsCount !== null) {
-    impressions = post.impressionsCount;
-  } else if (post.impressions !== undefined && post.impressions !== null) {
-    impressions = post.impressions;
-  }
-
-  if (post.repostCount !== undefined && post.repostCount !== null) {
-    baseReposts = post.repostCount;
-  } else if (post.repostsCount !== undefined && post.repostsCount !== null) {
-    baseReposts = post.repostsCount;
-  }
-
-  // Replies are strictly organic - the algorithm NEVER touches replies
-  const replies = post.commentCount || post.repliesCount || 0;
-
-  return { impressions, baseReposts, replies };
-}
-
 export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   post,
   isHot = false,
@@ -167,42 +65,23 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
 
-  // Live timer tick for gradual real-time impression rise over 10-24 hours
-  const [liveTick, setLiveTick] = useState(0);
-  useEffect(() => {
-    const createdTs = new Date(post.createdAt || Date.now()).getTime();
-    const ageSec = (Date.now() - createdTs) / 1000;
-    if (ageSec < 24 * 3600) {
-      // Refresh frequently for fresh messages, every 30s otherwise
-      const intervalMs = ageSec < 120 ? 3000 : ageSec < 3600 ? 15000 : 30000;
-      const timer = setInterval(() => {
-        setLiveTick((t) => t + 1);
-      }, intervalMs);
-      return () => clearInterval(timer);
-    }
-  }, [post.createdAt]);
-
-  // Engagement algorithm: replies are strictly organic, impressions & reposts climb gradually
-  const engagement = useMemo(() => computePostEngagement(post), [post, liveTick]);
-  const impressions = post.impressionsCount ?? post.impressions ?? engagement.impressions;
-  const dbRepostCount = post.repostCount ?? post.repostsCount;
-  const [repostCount, setRepostCount] = useState<number>(
-    dbRepostCount !== undefined ? dbRepostCount : engagement.baseReposts
-  );
+  // Pure Database-Driven Metrics: all calculated deterministically by PostgreSQL (banter_posts_enriched)
+  const impressions = post.impressionsCount ?? post.impressions ?? 0;
+  const dbRepostCount = post.repostCount ?? post.repostsCount ?? 0;
+  const [repostCount, setRepostCount] = useState<number>(dbRepostCount);
   const [hasReposted, setHasReposted] = useState(false);
 
-  // Sync repost count as baseline climbs if user has not manually toggled
+  // Sync repost count from server state if not manually toggled by user
   useEffect(() => {
     if (!hasReposted) {
-      if (post.repostCount !== undefined || post.repostsCount !== undefined) {
-        setRepostCount(post.repostCount ?? post.repostsCount ?? 0);
-      } else {
-        setRepostCount(engagement.baseReposts);
-      }
+      setRepostCount(post.repostCount ?? post.repostsCount ?? 0);
     }
-  }, [engagement.baseReposts, hasReposted, post.repostCount, post.repostsCount]);
+  }, [hasReposted, post.repostCount, post.repostsCount]);
 
-  const [replyCount, setReplyCount] = useState(engagement.replies);
+  const [replyCount, setReplyCount] = useState(post.commentCount ?? post.repliesCount ?? 0);
+  useEffect(() => {
+    setReplyCount(post.commentCount ?? post.repliesCount ?? 0);
+  }, [post.commentCount, post.repliesCount]);
 
   const [expanded, setExpanded] = useState(false);
 
@@ -256,9 +135,10 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const handleRepost = (e: React.MouseEvent) => {
     e.stopPropagation();
     const next = !hasReposted;
-    // Instant UI update
-    setRepostCount((prev: number) => prev + (next ? 1 : -1));
+    // Instant UI update (+1 optimistically on top of database count)
+    setRepostCount((prev: number) => Math.max(0, prev + (next ? 1 : -1)));
     setHasReposted(next);
+    banterService.toggleRepost(post.id, next).catch(console.warn);
     // Background asynchronous promise
     if (onRepost) {
       Promise.resolve().then(() => onRepost(post.id, next)).catch(console.warn);
@@ -439,6 +319,16 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
             )}
           </div>
 
+          {/* Replying to indicator if this is a reply card */}
+          {(post.replyingToHandle || (post as any).replying_to) && (
+            <div className="mt-1 text-xs text-zinc-500 font-sans">
+              <span>Replying to </span>
+              <span className="text-sky-400 font-medium">
+                @{((post.replyingToHandle || (post as any).replying_to) as string).replace(/[^a-z0-9_]/gi, '')}
+              </span>
+            </div>
+          )}
+
           {/* Tweet Text Content with Maximum View Limit */}
           <p
             data-testid="banter-post-content"
@@ -599,7 +489,9 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsBookmarked(prev => !prev);
+                  const next = !isBookmarked;
+                  setIsBookmarked(next);
+                  banterService.toggleBookmark(post.id, next).catch(console.warn);
                 }}
                 className={`p-1.5 rounded-full hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer ${
                   isBookmarked ? 'text-sky-400' : ''

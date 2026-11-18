@@ -127,24 +127,36 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    setVisibleRepliesCount(10);
+    setVisibleRepliesCount(20);
   }, [postId]);
 
-  const [visibleRepliesCount, setVisibleRepliesCount] = useState(10);
+  const [visibleRepliesCount, setVisibleRepliesCount] = useState(20);
   const [replyTargetPost, setReplyTargetPost] = useState<BanterPost | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
       if (typeof window !== 'undefined') {
         const scrollBottom = window.innerHeight + window.scrollY;
-        if (scrollBottom >= document.body.offsetHeight - 500) {
-          setVisibleRepliesCount(prev => (prev < replies.length ? prev + 5 : prev));
+        if (scrollBottom >= document.documentElement.scrollHeight - 500) {
+          setVisibleRepliesCount(prev => (prev < replies.length ? prev + 20 : prev));
         }
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [replies.length]);
+
+  useEffect(() => {
+    if (!loadMoreSentinelRef.current || visibleRepliesCount >= replies.length) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) {
+        setVisibleRepliesCount(prev => (prev < replies.length ? prev + 20 : prev));
+      }
+    }, { rootMargin: '400px' });
+    observer.observe(loadMoreSentinelRef.current);
+    return () => observer.disconnect();
+  }, [replies.length, visibleRepliesCount]);
 
   const loadThread = useCallback(async () => {
     setIsLoading(true);
@@ -429,6 +441,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
       parentId: post.id,
       rootId: post.rootId || post.id,
       depth: (post.depth || 0) + 1,
+      replyingToHandle: post.authorHandle,
       content,
       mediaUrls,
       mediaType: mediaType || 'NONE',
@@ -484,6 +497,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         authorName: effectiveName,
         authorHandle: effectiveHandle,
         authorAvatar: effectiveAvatar,
+        replyingToHandle: parentReply.authorHandle,
       });
 
       if (created && created.id) {
@@ -513,6 +527,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
       parentId: parentReply.id,
       rootId: post.id,
       depth: (parentReply.depth || 1) + 1,
+      replyingToHandle: parentReply.authorHandle,
       content,
       mediaType: 'NONE',
       authorDeviceId: effectiveDeviceId,
@@ -565,6 +580,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         authorName: effectiveName,
         authorHandle: effectiveHandle,
         authorAvatar: effectiveAvatar,
+        replyingToHandle: parentReply.authorHandle,
       });
       if (created && created.id) {
         setReplies(prev => prev.map(r => r.id === optimisticId ? { ...optimisticDeepReply, id: created.id } : r));
@@ -676,6 +692,19 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
 
   const isJournalist = post.authorType === 'journalist' || (post.authorBadge || '').toLowerCase().includes('journalist');
 
+  const getReplyingToHandle = (replyItem: BanterPost): string => {
+    if (replyItem.replyingToHandle) {
+      return replyItem.replyingToHandle.replace(/[^a-z0-9_]/gi, '');
+    }
+    if (replyItem.parentId && replyItem.parentId !== post?.id) {
+      const parent = replies.find(r => r.id === replyItem.parentId) || ancestry.find(a => a.id === replyItem.parentId);
+      if (parent && parent.authorHandle) {
+        return parent.authorHandle.replace(/[^a-z0-9_]/gi, '');
+      }
+    }
+    return (post?.authorHandle || 'author').replace(/[^a-z0-9_]/gi, '');
+  };
+
   return (
     <div
       className="w-full max-w-2xl mx-auto min-h-screen bg-[#000000] text-white pb-24"
@@ -686,7 +715,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         <button
           type="button"
           aria-label="Back to feed"
-          onClick={() => onBack(post ? Math.max(post.commentCount || 0, post.repliesCount || 0, replies.length) : replies.length, post?.id, post?.content)}
+          onClick={() => onBack(replies.length, post?.id, post?.content)}
           className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -895,9 +924,9 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
           })()}
 
           {/* Interactive Community Poll */}
-          {post.poll && (
+          {Boolean(post.poll || post.pollId || post.type === 'poll' || (Array.isArray(post.type) && post.type.includes('poll')) || (Array.isArray(post.types) && post.types.includes('poll'))) && (
             <XPollWidget
-              poll={post.poll}
+              poll={post.poll || (post.pollId ? (banterService.getPollById(post.pollId) || post.poll) : post.poll)!}
               onPollUpdated={(updated) => setPost((curr: BanterPost | null) => curr ? { ...curr, poll: updated } : null)}
             />
           )}
@@ -907,11 +936,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
             <span>{formatFullTimestamp(post.createdAt)}</span>
             <span>·</span>
             <span className="font-semibold text-zinc-400">
-              {formatTwitterMetric(
-                post.isTrending
-                  ? Math.min(1940, Math.max(1501, (post.impressionsCount || post.impressions || 0) > 1500 ? (post.impressionsCount || post.impressions || 1780) : 1780))
-                  : Math.min(1500, Math.max(500, (post.impressionsCount || post.impressions || 0) <= 1500 && (post.impressionsCount || post.impressions || 0) >= 500 ? (post.impressionsCount || post.impressions || 1120) : 1120))
-              )} Views
+              {formatTwitterMetric(post.impressionsCount ?? post.impressions ?? 0)} Views
             </span>
           </div>
 
@@ -926,7 +951,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
               <span className="text-zinc-500">Likes</span>
             </div>
             <div>
-              <span className="font-black text-white">{post.commentCount || 0}</span>{' '}
+              <span className="font-black text-white">{replies.length}</span>{' '}
               <span className="text-zinc-500">Replies</span>
             </div>
           </div>
@@ -1203,6 +1228,14 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                           </div>
                         </div>
 
+                        {/* Replying to indicator: always present across all replies at every level */}
+                        <div className="flex items-center gap-1 text-[11px] sm:text-xs text-zinc-400 font-sans my-1 select-none">
+                          <span>Replying to</span>
+                          <span className="text-sky-400 font-medium hover:underline">
+                            @{getReplyingToHandle(reply)}
+                          </span>
+                        </div>
+
                         {voteMatch ? (
                           <div className="space-y-1 my-1">
                             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-400 text-xs font-bold">
@@ -1215,9 +1248,9 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                           <ExpandableReplyText text={reply.content} />
                         )}
 
-                        {reply.poll && (
+                        {Boolean(reply.poll || reply.pollId || reply.type === 'poll' || (Array.isArray(reply.type) && reply.type.includes('poll'))) && (
                           <XPollWidget
-                            poll={reply.poll}
+                            poll={reply.poll || (reply.pollId ? (banterService.getPollById(reply.pollId) || reply.poll) : reply.poll)!}
                             onPollUpdated={(updated) => setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, poll: updated } : r))}
                           />
                         )}
@@ -1361,11 +1394,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                           <div className="flex items-center gap-1 text-zinc-500 text-[11px] font-mono p-1 select-none" title="Views">
                             <BarChart2 className="h-3.5 w-3.5" />
                             <span>
-                              {formatTwitterMetric(
-                                reply.impressionsCount && reply.impressionsCount >= 500 && reply.impressionsCount <= 1500
-                                  ? reply.impressionsCount
-                                  : Math.min(1500, Math.max(500, 500 + ((reply.reactionFireCount || 0) * 12) + ((reply.commentCount || 0) * 18)))
-                              )}
+                              {formatTwitterMetric(reply.impressionsCount ?? reply.impressions ?? 0)}
                             </span>
                           </div>
                           <button
@@ -1386,6 +1415,10 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                     {/* Inline Deep Reply Box (Level 2 Sub-Reply) */}
                     {activeDeepReplyTargetId === reply.id && (
                       <div className="mt-2 pt-2 border-t border-zinc-800 space-y-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1 text-[11px] text-zinc-400 font-sans px-1">
+                          <span>Replying to</span>
+                          <span className="text-sky-400 font-semibold">@{reply.authorHandle.replace(/[^a-z0-9_]/gi, '')}</span>
+                        </div>
                         <textarea
                           placeholder="Post your reply"
                           value={deepReplyText}
@@ -1420,6 +1453,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                   Showing {visibleRepliesCount} of {replies.length} replies · Scroll for more
                 </div>
               )}
+              <div ref={loadMoreSentinelRef} className="h-4 w-full" />
             </div>
           )}
         </div>
@@ -1437,6 +1471,12 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
 
         {/* Single input bar fixed at the bottom with @team autocomplete */}
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-md border-t border-zinc-800 p-2.5 sm:p-3 shadow-2xl">
+          {post && (
+            <div className="max-w-2xl mx-auto mb-1 px-1 flex items-center gap-1 text-[11px] text-zinc-400 font-sans">
+              <span>Replying to</span>
+              <span className="text-sky-400 font-semibold">@{post.authorHandle.replace(/[^a-z0-9_]/gi, '')}</span>
+            </div>
+          )}
           {showThreadTeamDropdown && (
             <div className="max-w-2xl mx-auto mb-2 rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl z-50 max-h-48 overflow-y-auto">
               <div className="flex items-center justify-between px-2 py-1 text-[11px] font-bold text-zinc-400 border-b border-zinc-800/80 mb-1">

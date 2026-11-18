@@ -78,6 +78,7 @@ import type {
   PredictionOption,
   ConsensusData,
   BanterPost,
+  BanterPostType,
   BanterFilterType,
   ReactionType,
   UserPrediction,
@@ -1218,9 +1219,18 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
 
     const session = banterProfile || getActiveSessionProfile();
     const tempId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `temp-${Date.now()}`;
+    const optimisticTypes: BanterPostType[] = [];
+    if (poll) optimisticTypes.push('poll');
+    if (mediaType === 'VIDEO') optimisticTypes.push('video');
+    else if (mediaUrls && mediaUrls.length > 0) optimisticTypes.push('image');
+    if (optimisticTypes.length === 0) optimisticTypes.push('text');
+    const optimisticType = optimisticTypes[0];
+
     const optimisticPost: BanterPost = {
       id: tempId,
       content,
+      type: optimisticType,
+      types: optimisticTypes,
       mediaUrls,
       mediaType: mediaType || 'NONE',
       poll: poll ? ({

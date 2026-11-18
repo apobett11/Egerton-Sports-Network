@@ -89,11 +89,15 @@ export interface BanterPoll {
 }
 
 export type BanterMediaType = 'NONE' | 'IMAGE' | 'DUAL_IMAGE' | 'VIDEO';
+export type BanterPostType = 'text' | 'image' | 'video' | 'poll';
 
 export interface BanterPost {
   id: string;
+  type?: BanterPostType | BanterPostType[];
+  types?: BanterPostType[];
   parentId?: string | null;
   rootId?: string | null;
+  replyingToHandle?: string | null;
   depth?: number;
   userId?: string;
   authorHandle: string;
