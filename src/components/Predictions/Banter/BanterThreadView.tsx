@@ -497,7 +497,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         authorName: effectiveName,
         authorHandle: effectiveHandle,
         authorAvatar: effectiveAvatar,
-        replyingToHandle: parentReply.authorHandle,
+        replyingToHandle: post.authorHandle,
       });
 
       if (created && created.id) {
@@ -580,7 +580,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         authorName: effectiveName,
         authorHandle: effectiveHandle,
         authorAvatar: effectiveAvatar,
-        replyingToHandle: parentReply.authorHandle,
+        replyingToHandle: post.authorHandle,
       });
       if (created && created.id) {
         setReplies(prev => prev.map(r => r.id === optimisticId ? { ...optimisticDeepReply, id: created.id } : r));

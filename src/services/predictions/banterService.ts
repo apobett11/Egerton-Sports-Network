@@ -152,7 +152,7 @@ export async function uploadMediaToBucket(
       if (!match) return dataUrlOrFile;
       mimeType = match[1];
       const base64Data = match[2];
-      const byteCharacters = typeof atob !== 'undefined' ? atob(base64Data) : (typeof Buffer !== 'undefined' ? Buffer.from(base64Data, 'base64').toString('binary') : '');
+      const byteCharacters = typeof atob !== 'undefined' ? atob(base64Data) : (typeof (globalThis as any).Buffer !== 'undefined' ? (globalThis as any).Buffer.from(base64Data, 'base64').toString('binary') : '');
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -1546,9 +1546,10 @@ export class BanterService {
         postId: postId || '',
         question: sanitizedQ,
         options: sanitizedOpts.map((optText, idx) => ({ id: idx + 1, text: optText, votes: 0 })),
-        totalVotes: 0,
+        totalVotes: 1,
         voters: {},
-        expiresAt: new Date(Date.now() + 86400000).toISOString()
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        createdAt: new Date().toISOString()
       };
       this.savePoll(pollObj);
     }
@@ -1912,13 +1913,13 @@ export class BanterService {
     }
 
     if (reactionType === 'fire') {
-      supabase.rpc('toggle_banter_like', {
+      void supabase.rpc('toggle_banter_like', {
         p_post_id: postId,
         p_active: willBeActive,
-      }).catch(() => {});
+      }).then(undefined, () => {});
     }
 
-    this.persistReactionToBackend(postId, reactionType, willBeActive).catch(() => {});
+    void Promise.resolve(this.persistReactionToBackend(postId, reactionType, willBeActive)).catch(() => {});
 
     return { active: willBeActive, newCount: count };
   }
@@ -2474,7 +2475,9 @@ export class BanterService {
       options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options,
       totalVotes,
       voters,
-      expiresAt: p.expires_at
+      expiresAt: p.expires_at,
+      createdAt: p.created_at,
+      created_at: p.created_at
     };
   }
 }

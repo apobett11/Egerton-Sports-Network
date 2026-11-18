@@ -10,14 +10,51 @@ interface XPollWidgetProps {
   onPollUpdated?: (poll: BanterPoll) => void;
 }
 
-function getPollBaseline(pollId: string, optionsCount: number): { baseTotal: number; optionShares: number[] } {
+export function getPollBaseline(
+  pollId: string,
+  optionsCount: number,
+  createdAt?: string | number | Date
+): { baseTotal: number; optionShares: number[] } {
   let hash = 0;
   for (let i = 0; i < pollId.length; i++) {
     hash = (hash << 5) - hash + pollId.charCodeAt(i);
     hash |= 0;
   }
   const positiveHash = Math.abs(hash);
-  const baseTotal = 54 + (positiveHash % 127); // 54 - 180 votes
+
+  // Saturation window between 8h (28,800s) and 15h (54,000s)
+  const windowSec = 28800 + (positiveHash % 25201);
+  const t0 = windowSec * 0.45;
+  const k = 10.0 / windowSec;
+
+  const createdTs = createdAt ? new Date(createdAt).getTime() : Date.now();
+  const ageSeconds = Math.max(0, (Date.now() - createdTs) / 1000);
+
+  // Strict start at 1 vote at age <= 5 seconds (fresh poll)
+  if (ageSeconds <= 5) {
+    const optionShares = Array.from({ length: optionsCount }, (_, idx) => (idx === 0 ? 1 : 0));
+    return { baseTotal: 1, optionShares };
+  }
+
+  // Normalized Sigmoid S-Curve
+  const clampU = (u: number) => Math.min(30.0, Math.max(-30.0, u));
+  const f0 = 1.0 / (1.0 + Math.exp(clampU(-k * (0.0 - t0))));
+  const fT = 1.0 / (1.0 + Math.exp(clampU(-k * (windowSec - t0))));
+  const ft = 1.0 / (1.0 + Math.exp(clampU(-k * (ageSeconds - t0))));
+
+  let sNorm = (ft - f0) / (fT - f0);
+  sNorm = Math.min(1.0, Math.max(0.0, sNorm));
+
+  // Micro-jitter smoothly faded in after 15 minutes (900s)
+  let microJitter = 0.0;
+  if (ageSeconds > 900.0) {
+    const fade = Math.min(1.0, (ageSeconds - 900.0) / 900.0);
+    microJitter = fade * Math.sin(ageSeconds / 900.0 + (positiveHash % 6283) / 1000.0) * 1.5;
+  }
+
+  const targetTotal = 54 + (positiveHash % 127); // 54 - 180 votes ceiling
+  const simulatedVotes = Math.max(0, Math.floor((targetTotal - 1) * sNorm + microJitter));
+  const baseTotal = 1 + simulatedVotes; // Starts at 1 and climbs smoothly with sigmoid curve
 
   if (optionsCount <= 1) {
     return { baseTotal, optionShares: [baseTotal] };
@@ -25,8 +62,8 @@ function getPollBaseline(pollId: string, optionsCount: number): { baseTotal: num
 
   if (optionsCount === 2) {
     const splitPct = 42 + (positiveHash % 22); // 42% - 63%
-    const votes1 = Math.round((baseTotal * splitPct) / 100);
-    const votes2 = baseTotal - votes1;
+    const votes1 = Math.max(1, Math.round((baseTotal * splitPct) / 100));
+    const votes2 = Math.max(0, baseTotal - votes1);
     return { baseTotal, optionShares: [votes1, votes2] };
   }
 
@@ -35,9 +72,9 @@ function getPollBaseline(pollId: string, optionsCount: number): { baseTotal: num
   let allocated = 0;
   const optionShares = rawWeights.map((w, idx) => {
     if (idx === optionsCount - 1) {
-      return baseTotal - allocated;
+      return Math.max(0, baseTotal - allocated);
     }
-    const val = Math.round((baseTotal * w) / totalWeight);
+    const val = Math.max(idx === 0 ? 1 : 0, Math.round((baseTotal * w) / totalWeight));
     allocated += val;
     return val;
   });
@@ -160,10 +197,14 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
 
   const hasVoted = userVotedOptionId !== undefined;
 
-  // Baseline community engagement so poll numbers are never zero, and voter is never shown as the first/sole person
+  // Baseline community engagement climbing smoothly from 1 vote following the sigmoid adoption curve
   const baseline = useMemo(() => {
-    return getPollBaseline(poll.id || 'poll-default', poll.options.length);
-  }, [poll.id, poll.options.length]);
+    return getPollBaseline(
+      poll.id || 'poll-default',
+      poll.options.length,
+      poll.createdAt || poll.created_at
+    );
+  }, [poll.id, poll.options.length, poll.createdAt, poll.created_at]);
 
   const effectiveOptionVotes = useMemo(() => {
     return poll.options.map((opt, idx) => {

@@ -86,6 +86,8 @@ export interface BanterPoll {
   totalVotes: number;
   voters: Record<string, number>; // { device_id: option_id }
   expiresAt: string;
+  createdAt?: string;
+  created_at?: string;
 }
 
 export type BanterMediaType = 'NONE' | 'IMAGE' | 'DUAL_IMAGE' | 'VIDEO';
@@ -128,6 +130,7 @@ export interface BanterPost {
   impressionsCount?: number;
   impressions?: number;
   viewsCount?: number;
+  bookmarksCount?: number;
   pollId?: string | null;
   poll?: BanterPoll | null;
   taggedTeamId?: string | null;
