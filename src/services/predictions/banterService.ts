@@ -1671,9 +1671,9 @@ export class BanterService {
       reactionSkullCount: savedDbRow.reaction_skull_count || 0,
       commentCount: savedDbRow.comment_count || 0,
       repostCount: savedDbRow.repost_count || 0,
-      impressionsCount: savedDbRow.impressions_count ?? baselineImpressions,
-      impressions: savedDbRow.impressions_count ?? baselineImpressions,
-      viewsCount: savedDbRow.views_count ?? baselineViews,
+      impressionsCount: savedDbRow.impressions_count ?? 0,
+      impressions: savedDbRow.impressions ?? savedDbRow.impressions_count ?? 0,
+      viewsCount: savedDbRow.views_count ?? savedDbRow.views ?? 0,
       isMine: true,
       createdAt: savedDbRow.created_at || new Date().toISOString(),
       userReactions: {}
@@ -1811,18 +1811,72 @@ export class BanterService {
     if (ids.length === 0) return;
 
     try {
-      const impressions = ids.map(() => 1);
-      const reposts = ids.map(() => 0);
-      const views = ids.map(() => 1);
-      await supabase.rpc('batch_increment_banter_metrics', {
-        p_post_ids: ids,
-        p_impressions: impressions,
-        p_reposts: reposts,
-        p_views: views,
+      // 1. Primary: Atomic increment_banter_impressions RPC
+      const { error } = await supabase.rpc('increment_banter_impressions', {
+        post_ids: ids,
       });
+      if (error) {
+        // Fallback: batch_increment_banter_metrics
+        const impressions = ids.map(() => 1);
+        const reposts = ids.map(() => 0);
+        const views = ids.map(() => 1);
+        await supabase.rpc('batch_increment_banter_metrics', {
+          p_post_ids: ids,
+          p_impressions: impressions,
+          p_reposts: reposts,
+          p_views: views,
+        });
+      }
     } catch {
       // offline safe
     }
+  }
+
+  public async toggleRepost(
+    postId: string,
+    active?: boolean
+  ): Promise<{ active: boolean; newCount: number }> {
+    const targetPost = this.localPosts.find((p: BanterPost) => p.id === postId);
+    const willBeActive = active !== undefined ? active : true;
+    let count = 0;
+    if (targetPost) {
+      targetPost.repostCount = Math.max(0, (targetPost.repostCount || 0) + (willBeActive ? 1 : -1));
+      targetPost.repostsCount = targetPost.repostCount;
+      count = targetPost.repostCount;
+      setStoredItem('egerscore_local_banter_posts', this.localPosts);
+    }
+    try {
+      await supabase.rpc('toggle_banter_repost', {
+        p_post_id: postId,
+        p_active: willBeActive,
+      });
+    } catch (e) {
+      console.warn('Deferred toggle_banter_repost:', e);
+    }
+    return { active: willBeActive, newCount: count };
+  }
+
+  public async toggleBookmark(
+    postId: string,
+    active?: boolean
+  ): Promise<{ active: boolean; newCount: number }> {
+    const targetPost = this.localPosts.find((p: BanterPost) => p.id === postId);
+    const willBeActive = active !== undefined ? active : true;
+    let count = 0;
+    if (targetPost) {
+      targetPost.bookmarksCount = Math.max(0, ((targetPost as any).bookmarksCount || 0) + (willBeActive ? 1 : -1));
+      count = (targetPost as any).bookmarksCount;
+      setStoredItem('egerscore_local_banter_posts', this.localPosts);
+    }
+    try {
+      await supabase.rpc('toggle_banter_bookmark', {
+        p_post_id: postId,
+        p_active: willBeActive,
+      });
+    } catch (e) {
+      console.warn('Deferred toggle_banter_bookmark:', e);
+    }
+    return { active: willBeActive, newCount: count };
   }
 
   public async toggleReaction(
@@ -1855,6 +1909,13 @@ export class BanterService {
       targetPost.likesCount = targetPost.reactionFireCount;
       count = targetPost[countField];
       setStoredItem('egerscore_local_banter_posts', this.localPosts);
+    }
+
+    if (reactionType === 'fire') {
+      supabase.rpc('toggle_banter_like', {
+        p_post_id: postId,
+        p_active: willBeActive,
+      }).catch(() => {});
     }
 
     this.persistReactionToBackend(postId, reactionType, willBeActive).catch(() => {});
@@ -2258,15 +2319,16 @@ export class BanterService {
       likesCount: d.likes_count ?? d.reaction_fire_count ?? 0,
       repliesCount: d.comment_count ?? d.replies_count ?? 0,
       repostsCount: d.repost_count ?? d.reposts_count ?? 0,
-      reactionFireCount: d.reaction_fire_count ?? 0,
+      reactionFireCount: d.reaction_fire_count ?? d.likes_count ?? 0,
       reactionClownCount: d.reaction_clown_count ?? 0,
       reactionSkullCount: d.reaction_skull_count ?? 0,
-      commentCount: d.comment_count ?? 0,
+      commentCount: d.comment_count ?? d.replies_count ?? 0,
       repostCount: d.repost_count ?? d.reposts_count ?? 0,
       isTrending: Boolean(d.is_trending),
       impressions: d.impressions_count ?? d.impressions ?? 0,
       impressionsCount: d.impressions_count ?? d.impressions ?? 0,
-      viewsCount: d.views_count ?? 1,
+      viewsCount: d.views_count ?? d.views ?? (d.impressions_count ? Math.floor(d.impressions_count * 0.42) : 0),
+      bookmarksCount: d.bookmarks_count ?? 0,
       pollId,
       poll: poll || undefined,
       taggedTeamId: d.tagged_team_id || null,
@@ -2288,7 +2350,7 @@ export class BanterService {
 
     try {
       let query = supabase
-        .from('banter_posts')
+        .from('banter_posts_enriched')
         .select('*')
         .eq('status', 'active');
 
