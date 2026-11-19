@@ -75,6 +75,77 @@ async function uploadMediaDataUrl(dataUrl: string, _mediaType?: string): Promise
   }
 }
 
+function parseMediaFromContent(rawContent: string): {
+  cleanContent: string;
+  mediaUrls: string[];
+  mediaType: 'NONE' | 'IMAGE' | 'DUAL_IMAGE' | 'VIDEO';
+} {
+  if (!rawContent) {
+    return { cleanContent: '', mediaUrls: [], mediaType: 'NONE' };
+  }
+
+  const mediaUrls: string[] = [];
+  let mediaType: 'NONE' | 'IMAGE' | 'DUAL_IMAGE' | 'VIDEO' = 'NONE';
+
+  const cleanContent = rawContent.replace(/\[media:(image|video):([^\]]+)\]/g, (_, type, url) => {
+    const cleanUrl = url.trim();
+    if (cleanUrl) {
+      mediaUrls.push(cleanUrl);
+      if (type === 'video') {
+        mediaType = 'VIDEO';
+      } else if (mediaType !== 'VIDEO') {
+        mediaType = mediaUrls.length > 1 ? 'DUAL_IMAGE' : 'IMAGE';
+      }
+    }
+    return '';
+  }).trim();
+
+  return { cleanContent, mediaUrls, mediaType };
+}
+
+function parsePollFromContent(rawContent: string, defaultId?: string): { cleanContent: string; poll: any | null } {
+  if (!rawContent || !rawContent.includes('[poll:')) {
+    return { cleanContent: rawContent || '', poll: null };
+  }
+  let poll: any = null;
+  const cleanContent = rawContent.replace(/\[poll:([\s\S]*?)\]/g, (_, jsonStr) => {
+    try {
+      const parsed = JSON.parse(jsonStr.trim());
+      const pollId = parsed.id || defaultId || `poll-${Date.now()}`;
+      const rawOptions = parsed.options || parsed.o || [];
+      const options = rawOptions.map((opt: any, idx: number) => {
+        if (typeof opt === 'string') {
+          return { id: idx + 1, text: opt, votes: 0 };
+        }
+        return {
+          id: opt.id ?? idx + 1,
+          text: opt.text || opt.title || `Choice ${idx + 1}`,
+          votes: Number(opt.votes || 0)
+        };
+      });
+
+      if (options.length >= 2) {
+        poll = {
+          id: pollId,
+          postId: parsed.postId || defaultId || '',
+          question: parsed.question || parsed.q || 'Community Poll',
+          options,
+          totalVotes: Math.max(1, Number(parsed.totalVotes ?? parsed.total_votes ?? 1)),
+          voters: parsed.voters || {},
+          expiresAt: parsed.expiresAt || parsed.expires_at || new Date(Date.now() + 86400000).toISOString(),
+          createdAt: parsed.createdAt || parsed.created_at || new Date().toISOString()
+        };
+      }
+    } catch {}
+    return '';
+  }).trim();
+
+  return {
+    cleanContent: cleanContent || (poll ? poll.question : ''),
+    poll
+  };
+}
+
 export default async function handler(req: any, res: any) {
   // CORS & Methods
   res.setHeader('Content-Type', 'application/json');
@@ -96,9 +167,9 @@ export default async function handler(req: any, res: any) {
       const limit = parseInt(url.searchParams.get('limit') || req.query?.limit || '50', 10);
 
       if (threadId) {
-        // Fetch active post and all its replies from banter_comments and banter_posts
-        const { data: post, error: postErr } = await supabaseAdmin
-          .from('banter_posts_enriched')
+        // Fetch active post and all its replies directly from banter_posts / banter_comments
+        let { data: post, error: postErr } = await supabaseAdmin
+          .from('banter_posts')
           .select('*')
           .eq('id', threadId)
           .single();
@@ -109,9 +180,9 @@ export default async function handler(req: any, res: any) {
           return;
         }
 
-        // 1. Direct comments from banter_comments_enriched
-        const { data: comments } = await supabaseAdmin
-          .from('banter_comments_enriched')
+        // 1. Direct comments from banter_comments
+        let { data: comments } = await supabaseAdmin
+          .from('banter_comments')
           .select('*')
           .eq('post_id', threadId)
           .eq('status', 'active')
@@ -122,57 +193,37 @@ export default async function handler(req: any, res: any) {
         if (allComments.length > 0) {
           const cIds = allComments.map((c: any) => c.id).filter(Boolean);
           if (cIds.length > 0) {
-            const { data: nested } = await supabaseAdmin
-              .from('banter_comments_enriched')
+            let { data: nested } = await supabaseAdmin
+              .from('banter_comments')
               .select('*')
               .in('post_id', cIds)
               .eq('status', 'active')
               .limit(200);
+
             if (nested && nested.length > 0) {
               allComments = [...allComments, ...nested];
             }
           }
         }
 
-        // 2. Replies from banter_posts_enriched
-        const { data: postReplies } = await supabaseAdmin
-          .from('banter_posts_enriched')
-          .select('*')
-          .or(`root_id.eq.${threadId},parent_id.eq.${threadId}`)
-          .eq('status', 'active')
-          .limit(200);
-
-        // Extract poll if present
+        // Extract poll if present from content or embedded tag
         let pollData: any = null;
-        if (post.poll_id) {
-          const { data: pollRow } = await supabaseAdmin
-            .from('banter_polls')
-            .select('*')
-            .eq('id', post.poll_id)
-            .maybeSingle();
-          if (pollRow) pollData = pollRow;
+        const postPollParsed = parsePollFromContent(post.content || '', post.id);
+        if (postPollParsed.poll) {
+          pollData = postPollParsed.poll;
+          post.content = postPollParsed.cleanContent;
         }
-        const pollComment = allComments.find((c: any) => c.author_handle === 'poll_bot' || (c.content && c.content.startsWith('[poll:')));
+
+        const pollComment = allComments.find((c: any) => c.author_handle === 'poll_bot' || (c.content && c.content.includes('[poll:')));
         if (!pollData && pollComment) {
-          const match = pollComment.content.match(/^\[poll:(.*)\]$/);
-          if (match) {
-            try {
-              const parsed = JSON.parse(match[1]);
-              pollData = {
-                id: `poll-${post.id}`,
-                postId: post.id,
-                question: parsed.q || 'Community Poll',
-                options: (parsed.o || []).map((o: string, i: number) => ({ id: i + 1, text: o, votes: 0 })),
-                totalVotes: 0,
-                voters: {}
-              };
-            } catch {}
+          const commentPollParsed = parsePollFromContent(pollComment.content || '', post.id);
+          if (commentPollParsed.poll) {
+            pollData = commentPollParsed.poll;
           }
         }
 
         // Filter out poll_bot and [poll:...] from user replies
-        const userComments = allComments.filter((c: any) => c.author_handle !== 'poll_bot' && !(c.content && c.content.startsWith('[poll:')));
-        const userPostReplies = (postReplies || []).filter((p: any) => p.id !== threadId);
+        const userComments = allComments.filter((c: any) => c.author_handle !== 'poll_bot' && !(c.content && c.content.includes('[poll:')));
 
         const existingIds = new Set<string>();
         const combinedReplies: any[] = [];
@@ -182,12 +233,6 @@ export default async function handler(req: any, res: any) {
             combinedReplies.push(c);
           }
         }
-        for (const pr of userPostReplies) {
-          if (!existingIds.has(pr.id)) {
-            existingIds.add(pr.id);
-            combinedReplies.push(pr);
-          }
-        }
 
         combinedReplies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
@@ -195,9 +240,22 @@ export default async function handler(req: any, res: any) {
           const parentAuthor = (r.post_id === threadId || r.parent_id === threadId)
             ? post.author_handle
             : (combinedReplies.find(x => x.id === (r.post_id || r.parent_id))?.author_handle || post.author_handle);
-          const rType = r.media_type === 'VIDEO' ? 'video' : ((r.media_urls?.length || r.image_url) ? 'image' : 'text');
+          const parsedReplyPoll = parsePollFromContent(r.content || '', r.id);
+          const parsedReplyMedia = parseMediaFromContent(parsedReplyPoll.cleanContent || r.content || '');
+          const mUrls = r.media_urls || (parsedReplyMedia.mediaUrls.length > 0 ? parsedReplyMedia.mediaUrls : (r.image_url ? [r.image_url] : []));
+          const mType = r.media_type || (parsedReplyMedia.mediaType !== 'NONE' ? parsedReplyMedia.mediaType : (mUrls.length > 0 ? 'IMAGE' : 'NONE'));
+          const rType = parsedReplyPoll.poll ? 'poll' : (mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
           return {
             ...r,
+            content: parsedReplyPoll.cleanContent || parsedReplyMedia.cleanContent || r.content,
+            media_urls: mUrls,
+            mediaUrls: mUrls,
+            media_type: mType,
+            mediaType: mType,
+            image_url: mUrls[0] || null,
+            imageUrl: mUrls[0] || null,
+            poll: parsedReplyPoll.poll || null,
+            pollId: parsedReplyPoll.poll?.id || null,
             type: rType,
             types: [rType],
             replying_to: parentAuthor,
@@ -217,18 +275,25 @@ export default async function handler(req: any, res: any) {
           post.poll = pollData;
           post.pollId = pollData.id;
         }
-        const pType = pollData ? 'poll' : (post.media_type === 'VIDEO' ? 'video' : ((post.media_urls?.length || post.image_url) ? 'image' : 'text'));
+        const parsedPostMedia = parseMediaFromContent(post.content || '');
+        const pUrls = post.media_urls || (parsedPostMedia.mediaUrls.length > 0 ? parsedPostMedia.mediaUrls : (post.image_url ? [post.image_url] : []));
+        const pMediaType = post.media_type || (parsedPostMedia.mediaType !== 'NONE' ? parsedPostMedia.mediaType : (pUrls.length > 0 ? 'IMAGE' : 'NONE'));
+        const pType = pollData ? 'poll' : (pMediaType === 'VIDEO' ? 'video' : (pUrls.length > 0 ? 'image' : 'text'));
         post.type = pType;
         post.types = [pType];
+        post.media_urls = pUrls;
+        post.mediaUrls = pUrls;
+        post.image_url = pUrls[0] || null;
+        post.imageUrl = pUrls[0] || null;
 
         res.statusCode = 200;
         res.end(JSON.stringify({ post, replies: updatedReplies }));
         return;
       }
 
-      // Fetch discourse / feed from enriched database view (zero simulation math)
+      // Fetch discourse / feed directly from banter_posts
       let query = supabaseAdmin
-        .from('banter_posts_enriched')
+        .from('banter_posts')
         .select('*')
         .eq('status', 'active');
 
@@ -236,17 +301,32 @@ export default async function handler(req: any, res: any) {
         query = query.or(`content.ilike.%@${teamName}%,content.ilike.%${teamName}%,author_handle.ilike.%${teamName}%`);
       }
 
-      const { data: posts, error } = await query
+      const fetchLimit = Math.max(limit || 100, 100);
+      const { data: posts } = await query
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(fetchLimit);
 
-      if (error) {
-        res.statusCode = 500;
-        res.end(JSON.stringify({ error: error.message }));
-        return;
-      }
-
-      const updatedPosts = posts || [];
+      const updatedPosts = (posts || []).map((p: any) => {
+        const parsed = parsePollFromContent(p.content || '', p.id);
+        const parsedMedia = parseMediaFromContent(parsed.cleanContent || p.content || '');
+        const mUrls = p.media_urls || (parsedMedia.mediaUrls.length > 0 ? parsedMedia.mediaUrls : (p.image_url ? [p.image_url] : []));
+        const mType = p.media_type || (parsedMedia.mediaType !== 'NONE' ? parsedMedia.mediaType : (mUrls.length > 0 ? 'IMAGE' : 'NONE'));
+        const pType = parsed.poll ? 'poll' : (mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
+        return {
+          ...p,
+          content: parsed.cleanContent || parsedMedia.cleanContent || (parsed.poll ? parsed.poll.question : p.content),
+          media_urls: mUrls,
+          mediaUrls: mUrls,
+          media_type: mType,
+          mediaType: mType,
+          image_url: mUrls[0] || null,
+          imageUrl: mUrls[0] || null,
+          poll: parsed.poll || null,
+          pollId: parsed.poll?.id || null,
+          type: pType,
+          types: [pType]
+        };
+      });
 
       res.statusCode = 200;
       res.end(JSON.stringify({ posts: updatedPosts }));
@@ -283,27 +363,49 @@ export default async function handler(req: any, res: any) {
       const sanitizedBadge = authorBadge ? sanitizeText(authorBadge).slice(0, 60) : null;
 
       // Handle media formatting into content if mediaUrls provided
-      let finalContent = sanitizedContent;
+      let finalContent = sanitizedContent.slice(0, 280);
       if (uploadedMediaUrls.length > 0) {
         const tag = mediaType === 'VIDEO' ? 'video' : 'image';
         uploadedMediaUrls.forEach((url: string) => {
           if (!url.startsWith('data:') && !finalContent.includes(url)) {
             const mediaTag = ` [media:${tag}:${url}]`;
-            if ((finalContent + mediaTag).length <= (parentId ? 200 : 280)) {
-              finalContent = `${finalContent}${mediaTag}`.trim();
-            }
+            finalContent = `${finalContent}${mediaTag}`.trim();
           }
         });
       }
 
-      if (!finalContent && uploadedMediaUrls.length === 0 && !poll) {
+      // Handle embedded poll if provided (for both root messages and thread replies)
+      let pollObj: any = null;
+      let pollId: string | null = null;
+      if (poll && poll.options && poll.options.length >= 2) {
+        const sanitizedQ = sanitizeText(poll.question).slice(0, 70) || 'Community Poll';
+        const sanitizedOpts = poll.options.map((o: string) => sanitizeText(o).slice(0, 50)).filter(Boolean);
+        pollId = poll.id || ('poll-' + (id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now())));
+        pollObj = {
+          id: pollId,
+          postId: id || '',
+          question: sanitizedQ,
+          options: sanitizedOpts.map((opt: string, i: number) => ({ id: i + 1, text: opt, votes: 0 })),
+          totalVotes: 1,
+          voters: {},
+          expiresAt: new Date(Date.now() + 86400000).toISOString(),
+          createdAt: new Date().toISOString()
+        };
+
+        const pollTag = `[poll:${JSON.stringify(pollObj)}]`;
+        if (!finalContent.includes('[poll:')) {
+          finalContent = finalContent ? `${finalContent} ${pollTag}` : `${pollObj.question} ${pollTag}`;
+        }
+      }
+
+      if (!finalContent && uploadedMediaUrls.length === 0 && !pollObj) {
         res.statusCode = 400;
         res.end(JSON.stringify({ error: 'Message content or media cannot be empty.' }));
         return;
       }
 
       if (parentId) {
-        // Reply under a message: stored in banter_comments (max 200 chars)
+        // Reply under a message: stored in banter_comments
         const commentId = (id && /^[0-9a-f-]{36}$/i.test(id))
           ? id
           : ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined);
@@ -311,7 +413,7 @@ export default async function handler(req: any, res: any) {
           post_id: parentId,
           author_handle: sanitizedHandle || 'Fanatic',
           author_type: authorType || 'user',
-          content: finalContent.slice(0, 200),
+          content: finalContent || (pollObj ? pollObj.question : 'Reply take'),
           status: 'active'
         };
         if (commentId) commentPayload.id = commentId;
@@ -343,35 +445,22 @@ export default async function handler(req: any, res: any) {
         }
 
         const parentAuthor = req.body?.replyingToHandle || null;
-        const rType = mediaType === 'VIDEO' ? 'video' : (uploadedMediaUrls.length > 0 ? 'image' : 'text');
+        const rType = pollObj ? 'poll' : (mediaType === 'VIDEO' ? 'video' : (uploadedMediaUrls.length > 0 ? 'image' : 'text'));
         reply.type = rType;
         reply.types = [rType];
         reply.replying_to = parentAuthor;
         reply.replyingToHandle = parentAuthor;
+        if (pollObj) {
+          reply.poll = pollObj;
+          reply.pollId = pollObj.id;
+        }
 
         res.statusCode = 201;
         res.end(JSON.stringify({ reply }));
         return;
       }
 
-      // Root message: stored in banter_posts (max 280 chars)
-      let pollObj: any = null;
-      let pollId: string | null = null;
-      if (poll && poll.options && poll.options.length >= 2) {
-        const sanitizedQ = sanitizeText(poll.question).slice(0, 70) || 'Community Poll';
-        const sanitizedOpts = poll.options.map((o: string) => sanitizeText(o).slice(0, 50)).filter(Boolean);
-        pollId = poll.id || ('poll-' + (id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now())));
-        pollObj = {
-          id: pollId,
-          postId: id || '',
-          question: sanitizedQ,
-          options: sanitizedOpts.map((opt: string, i: number) => ({ id: i + 1, text: opt, votes: 0 })),
-          totalVotes: 0,
-          voters: {},
-          expiresAt: new Date(Date.now() + 86400000).toISOString()
-        };
-      }
-
+      // Root message: stored in banter_posts
       const declaredType = pollObj ? 'poll' : (mediaType === 'VIDEO' ? 'video' : (uploadedMediaUrls.length > 0 ? 'image' : 'text'));
 
       const validAuthorTypes = ['user', 'journalist', 'admin', 'seed'];
@@ -383,7 +472,7 @@ export default async function handler(req: any, res: any) {
         author_handle: sanitizedHandle || 'Fanatic',
         author_type: dbAuthorType,
         author_badge: dbBadge || null,
-        content: (finalContent || 'Matchday take').slice(0, 280),
+        content: finalContent || (pollObj ? pollObj.question : 'Matchday take'),
         source_type: 'user',
         status: 'active',
         match_id: matchId || null,
@@ -396,10 +485,6 @@ export default async function handler(req: any, res: any) {
         views_count: Math.max(1, Math.floor(baselineImpressions * 0.4)),
         repost_count: 0
       };
-
-      if (pollId) {
-        postPayload.poll_id = pollId;
-      }
 
       if (id && /^[0-9a-f-]{36}$/i.test(id)) {
         postPayload.id = id;
@@ -419,21 +504,9 @@ export default async function handler(req: any, res: any) {
 
       if (pollObj) {
         pollObj.postId = post.id;
-        try {
-          await supabaseAdmin.from('banter_polls').upsert([{
-            id: pollObj.id,
-            post_id: post.id,
-            question: pollObj.question,
-            options: pollObj.options,
-            total_votes: 0,
-            voters: {},
-            expires_at: pollObj.expiresAt
-          }]);
-        } catch (pollErr) {
-          console.warn('Poll table store error:', pollErr);
-        }
         post.poll = pollObj;
         post.pollId = pollObj.id;
+        post.content = sanitizeText(poll.question) || 'Community Poll';
       }
 
       post.type = declaredType;

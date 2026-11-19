@@ -300,7 +300,9 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     const channel = supabase.channel('banter_feed_live_sync')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'banter_posts' }, (payload) => {
         if (payload?.new) {
-          const newPost = payload.new as BanterPost;
+          const newPost = (banterService as any).mapDatabaseRowToPost
+            ? (banterService as any).mapDatabaseRowToPost(payload.new)
+            : (payload.new as BanterPost);
           setBanterPosts((prev) => {
             if (prev.some((p) => p.id === newPost.id)) return prev;
             return [newPost, ...prev];
@@ -820,8 +822,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     }
 
     try {
-      const posts = await banterService.fetchPosts(banterFilter, matchId, 20, 0, devId);
-      if (posts && posts.length > 0) {
+      const posts = await banterService.fetchPosts(banterFilter, matchId, 100, 0, devId);
+      if (posts) {
         setBanterPosts(posts);
       }
     } catch (err) {
@@ -834,7 +836,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const loadMoreBanter = useCallback(async () => {
     const matchId = contextMatch?.id || null;
     const devId = banterProfile?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : '');
-    const more = await banterService.fetchPosts(banterFilter, matchId, 20, banterPosts.length, devId);
+    const more = await banterService.fetchPosts(banterFilter, matchId, 50, banterPosts.length, devId);
     if (more.length > 0) {
       setBanterPosts((prev) => {
         const ids = new Set(prev.map((p) => p.id));

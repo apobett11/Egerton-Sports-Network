@@ -11,11 +11,10 @@ export const BanterFeedExperience: React.FC = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('banter_posts_enriched')
+        .from('banter_posts')
         .select('*')
-        .is('parent_id', null)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(100);
 
       if (!error && data) {
         setRootPosts(data as BanterPost[]);

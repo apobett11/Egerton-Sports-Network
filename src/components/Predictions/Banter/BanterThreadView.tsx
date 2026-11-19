@@ -19,7 +19,7 @@ import {
   Flame
 } from 'lucide-react';
 import { supabase } from '../../../lib/predictions/banterSupabase';
-import { banterService } from '../../../services/predictions/banterService';
+import { banterService, parseMediaFromContent, parsePollFromContent } from '../../../services/predictions/banterService';
 import { shareBanterSnapshot } from '../../../lib/shareSnapshot';
 import { BanterReplyModal } from '../../Banter/BanterReplyModal';
 import { XPollWidget } from './XPollWidget';
@@ -36,7 +36,7 @@ import {
   AvatarViewModal
 } from '../../../lib/predictions/footballAvatars';
 import { ImageLightboxModal } from '../../common/ImageLightboxModal';
-import type { BanterPost, BanterMediaType, ReactionType } from '../../../types/predictions';
+import type { BanterPost, BanterMediaType, BanterPostType, ReactionType } from '../../../types/predictions';
 
 interface BanterThreadViewProps {
   postId: string;
@@ -247,6 +247,64 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         {
           event: 'INSERT',
           schema: 'public',
+          table: 'banter_comments',
+          filter: `post_id=eq.${postId}`,
+        },
+        (payload) => {
+          if (payload?.new) {
+            const item = payload.new as any;
+            if (item.device_id && item.device_id === selfDeviceId) {
+              setReplies((prev) => prev.map((r) => (r.content === item.content && r.id.startsWith('temp-')) ? { ...r, id: item.id } : r));
+              return;
+            }
+            const parsedMedia = parseMediaFromContent(item.content || '');
+            const parsedPoll = parsePollFromContent(parsedMedia.cleanContent || item.content || '', item.id);
+            const mUrls = parsedMedia.mediaUrls || [];
+            const hasPoll = Boolean(parsedPoll.poll);
+            const pType: BanterPostType = hasPoll ? 'poll' : (parsedMedia.mediaType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
+            const mapped: BanterPost = {
+              id: item.id,
+              type: pType,
+              types: [pType],
+              parentId: item.post_id,
+              rootId: postId,
+              depth: 1,
+              content: parsedPoll.cleanContent || parsedMedia.cleanContent || item.content,
+              mediaUrls: mUrls,
+              mediaType: parsedMedia.mediaType,
+              imageUrl: mUrls[0] || undefined,
+              poll: parsedPoll.poll || undefined,
+              pollId: parsedPoll.poll?.id || undefined,
+              userId: item.device_id,
+              authorDeviceId: item.device_id,
+              author_device_id: item.device_id,
+              authorHandle: item.author_handle || 'fanatic',
+              authorName: (item.author_handle || 'Fanatic').split(' #')[0],
+              authorAvatar: '#2563eb',
+              authorType: item.author_type || 'user',
+              sourceType: 'user',
+              reactionFireCount: 0,
+              reactionClownCount: 0,
+              reactionSkullCount: 0,
+              commentCount: 0,
+              repliesCount: 0,
+              createdAt: item.created_at || new Date().toISOString(),
+            };
+            setReplies((prev) => {
+              if (prev.some((r) => r.id === mapped.id || (r.content === mapped.content && (r.authorDeviceId === mapped.authorDeviceId || r.authorHandle === mapped.authorHandle)))) {
+                return prev.map(r => (r.content === mapped.content) ? { ...r, id: mapped.id } : r);
+              }
+              return [...prev, mapped];
+            });
+            setPost((curr) => curr ? { ...curr, commentCount: (curr.commentCount || 0) + 1, repliesCount: (curr.repliesCount || 0) + 1 } : null);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
           table: 'banter_posts',
           filter: `root_id=eq.${postId}`,
         },
@@ -257,12 +315,24 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
               setReplies((prev) => prev.map((r) => (r.content === item.content && r.id.startsWith('temp-')) ? { ...r, id: item.id } : r));
               return;
             }
+            const parsedMedia = parseMediaFromContent(item.content || '');
+            const parsedPoll = parsePollFromContent(parsedMedia.cleanContent || item.content || '', item.id);
+            const mUrls = parsedMedia.mediaUrls || [];
+            const hasPoll = Boolean(parsedPoll.poll);
+            const pType: BanterPostType = hasPoll ? 'poll' : (parsedMedia.mediaType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
             const mapped: BanterPost = {
               id: item.id,
+              type: pType,
+              types: [pType],
               parentId: item.parent_id,
               rootId: item.root_id,
               depth: item.depth || 1,
-              content: item.content,
+              content: parsedPoll.cleanContent || parsedMedia.cleanContent || item.content,
+              mediaUrls: mUrls,
+              mediaType: parsedMedia.mediaType,
+              imageUrl: mUrls[0] || undefined,
+              poll: parsedPoll.poll || undefined,
+              pollId: parsedPoll.poll?.id || undefined,
               userId: item.author_device_id || item.user_id,
               authorDeviceId: item.author_device_id,
               author_device_id: item.author_device_id,
@@ -861,75 +931,89 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
             </div>
           </div>
 
-          {/* Headline Typography Content */}
-          <p className="text-lg md:text-xl text-white font-normal leading-relaxed whitespace-pre-wrap select-text">
-            {renderContent(post.content)}
-          </p>
+          {/* Root Message Content, Media & Poll */}
+          {(() => {
+            const parsedPostPoll = parsePollFromContent(post.content || '', post.id);
+            const parsedPostMedia = parseMediaFromContent(parsedPostPoll.cleanContent);
+            const rootCleanContent = parsedPostMedia.cleanContent || (parsedPostPoll.poll ? parsedPostPoll.poll.question : post.content);
+            const rootMediaList = (post.mediaUrls && post.mediaUrls.length > 0)
+              ? post.mediaUrls
+              : (parsedPostMedia.mediaUrls.length > 0 ? parsedPostMedia.mediaUrls : (post.imageUrl ? [post.imageUrl] : []));
+            const rootMediaType = (post.mediaType && post.mediaType !== 'NONE') ? post.mediaType : parsedPostMedia.mediaType;
+            const rootPoll = post.poll || parsedPostPoll.poll || (post.pollId ? banterService.getPollById(post.pollId) : null);
+            const isRootPoll = Boolean(rootPoll || post.type === 'poll' || (Array.isArray(post.type) && post.type.includes('poll')) || (Array.isArray(post.types) && post.types.includes('poll')));
 
-          {/* Media Presentation */}
-          {post.mediaUrls && post.mediaUrls.length > 0 && (() => {
-            const mediaList = post.mediaUrls;
             return (
-              <div className="my-3">
-                {post.mediaType === 'VIDEO' ? (
-                  <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-black aspect-video max-h-96 flex items-center justify-center">
-                    <video
-                      src={mediaList[0]}
-                      controls
-                      className="w-full h-full object-contain"
-                    />
-                    <span className="absolute bottom-2.5 left-2.5 rounded-md bg-black/80 px-2 py-0.5 text-[10px] font-mono text-zinc-300 flex items-center gap-1">
-                      <Film className="h-3 w-3 text-sky-400" />
-                      <span>≤ 15s Clip</span>
-                    </span>
-                  </div>
-                ) : mediaList.length === 1 ? (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLightboxImageUrl(mediaList[0]);
-                    }}
-                    className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-video max-h-96 cursor-pointer group/img hover:border-zinc-700 transition"
-                    title="Click to view image"
-                  >
-                    <img
-                      src={mediaList[0]}
-                      alt="Post media"
-                      className="w-full h-full object-cover group-hover/img:scale-[1.01] transition-transform duration-200"
-                    />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2 rounded-2xl overflow-hidden border border-zinc-800">
-                    {mediaList.slice(0, 2).map((url: string, i: number) => (
+              <>
+                {/* Headline Typography Content */}
+                <p className="text-lg md:text-xl text-white font-normal leading-relaxed whitespace-pre-wrap select-text">
+                  {renderContent(rootCleanContent)}
+                </p>
+
+                {/* Media Presentation */}
+                {rootMediaList && rootMediaList.length > 0 && (
+                  <div className="my-3">
+                    {rootMediaType === 'VIDEO' ? (
+                      <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-black aspect-video max-h-96 flex items-center justify-center">
+                        <video
+                          src={rootMediaList[0]}
+                          controls
+                          className="w-full h-full object-contain"
+                        />
+                        <span className="absolute bottom-2.5 left-2.5 rounded-md bg-black/80 px-2 py-0.5 text-[10px] font-mono text-zinc-300 flex items-center gap-1">
+                          <Film className="h-3 w-3 text-sky-400" />
+                          <span>≤ 15s Clip</span>
+                        </span>
+                      </div>
+                    ) : rootMediaList.length === 1 ? (
                       <div
-                        key={i}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setLightboxImageUrl(url);
+                          setLightboxImageUrl(rootMediaList[0]);
                         }}
-                        className="aspect-square bg-zinc-950 overflow-hidden cursor-pointer group/img hover:border-zinc-700 transition"
+                        className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-video max-h-96 cursor-pointer group/img hover:border-zinc-700 transition"
                         title="Click to view image"
                       >
                         <img
-                          src={url}
-                          alt={`Media ${i + 1}`}
+                          src={rootMediaList[0]}
+                          alt="Post media"
                           className="w-full h-full object-cover group-hover/img:scale-[1.01] transition-transform duration-200"
                         />
                       </div>
-                    ))}
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 rounded-2xl overflow-hidden border border-zinc-800">
+                        {rootMediaList.slice(0, 2).map((url: string, i: number) => (
+                          <div
+                            key={i}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightboxImageUrl(url);
+                            }}
+                            className="aspect-square bg-zinc-950 overflow-hidden cursor-pointer group/img hover:border-zinc-700 transition"
+                            title="Click to view image"
+                          >
+                            <img
+                              src={url}
+                              alt={`Media ${i + 1}`}
+                              className="w-full h-full object-cover group-hover/img:scale-[1.01] transition-transform duration-200"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+
+                {/* Interactive Community Poll */}
+                {isRootPoll && rootPoll && (
+                  <XPollWidget
+                    poll={rootPoll}
+                    onPollUpdated={(updated) => setPost((curr: BanterPost | null) => curr ? { ...curr, poll: updated } : null)}
+                  />
+                )}
+              </>
             );
           })()}
-
-          {/* Interactive Community Poll */}
-          {Boolean(post.poll || post.pollId || post.type === 'poll' || (Array.isArray(post.type) && post.type.includes('poll')) || (Array.isArray(post.types) && post.types.includes('poll'))) && (
-            <XPollWidget
-              poll={post.poll || (post.pollId ? (banterService.getPollById(post.pollId) || post.poll) : post.poll)!}
-              onPollUpdated={(updated) => setPost((curr: BanterPost | null) => curr ? { ...curr, poll: updated } : null)}
-            />
-          )}
 
           {/* Full Timestamp & Views */}
           <div className="flex items-center gap-2 pt-2 text-xs text-zinc-500 border-t border-zinc-900 font-sans">
@@ -1236,41 +1320,56 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                           </span>
                         </div>
 
-                        {voteMatch ? (
-                          <div className="space-y-1 my-1">
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-400 text-xs font-bold">
-                              <BarChart2 className="w-3.5 h-3.5" />
-                              <span>Voted: {voteMatch[1]}</span>
-                            </div>
-                            <ExpandableReplyText text={voteMatch[2]} />
-                          </div>
-                        ) : (
-                          <ExpandableReplyText text={reply.content} />
-                        )}
+                        {(() => {
+                          const parsedReplyPoll = parsePollFromContent(reply.content || '', reply.id);
+                          const parsedReplyMedia = parseMediaFromContent(parsedReplyPoll.cleanContent);
+                          const replyCleanContent = parsedReplyMedia.cleanContent || (parsedReplyPoll.poll ? parsedReplyPoll.poll.question : reply.content);
+                          const replyMediaList = (reply.mediaUrls && reply.mediaUrls.length > 0)
+                            ? reply.mediaUrls
+                            : (parsedReplyMedia.mediaUrls.length > 0 ? parsedReplyMedia.mediaUrls : (reply.imageUrl ? [reply.imageUrl] : []));
+                          const replyPoll = reply.poll || parsedReplyPoll.poll || (reply.pollId ? banterService.getPollById(reply.pollId) : null);
+                          const isReplyPoll = Boolean(replyPoll || reply.type === 'poll' || (Array.isArray(reply.type) && reply.type.includes('poll')) || (Array.isArray(reply.types) && reply.types.includes('poll')));
 
-                        {Boolean(reply.poll || reply.pollId || reply.type === 'poll' || (Array.isArray(reply.type) && reply.type.includes('poll'))) && (
-                          <XPollWidget
-                            poll={reply.poll || (reply.pollId ? (banterService.getPollById(reply.pollId) || reply.poll) : reply.poll)!}
-                            onPollUpdated={(updated) => setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, poll: updated } : r))}
-                          />
-                        )}
+                          return (
+                            <>
+                              {voteMatch ? (
+                                <div className="space-y-1 my-1">
+                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-400 text-xs font-bold">
+                                    <BarChart2 className="w-3.5 h-3.5" />
+                                    <span>Voted: {voteMatch[1]}</span>
+                                  </div>
+                                  <ExpandableReplyText text={voteMatch[2]} />
+                                </div>
+                              ) : (
+                                <ExpandableReplyText text={replyCleanContent} />
+                              )}
 
-                        {((reply.mediaUrls && reply.mediaUrls.length > 0) || reply.imageUrl) && (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLightboxImageUrl(reply.mediaUrls?.[0] || reply.imageUrl || null);
-                            }}
-                            className="my-2 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 max-h-60 max-w-sm cursor-pointer hover:border-zinc-700 transition"
-                            title="Click to view image"
-                          >
-                            <img
-                              src={reply.mediaUrls?.[0] || reply.imageUrl}
-                              alt="Reply media"
-                              className="w-full h-auto object-cover max-h-60"
-                            />
-                          </div>
-                        )}
+                              {isReplyPoll && replyPoll && (
+                                <XPollWidget
+                                  poll={replyPoll}
+                                  onPollUpdated={(updated) => setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, poll: updated } : r))}
+                                />
+                              )}
+
+                              {replyMediaList && replyMediaList.length > 0 && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLightboxImageUrl(replyMediaList[0]);
+                                  }}
+                                  className="my-2 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 max-h-60 max-w-sm cursor-pointer hover:border-zinc-700 transition"
+                                  title="Click to view image"
+                                >
+                                  <img
+                                    src={replyMediaList[0]}
+                                    alt="Reply media"
+                                    className="w-full h-auto object-cover max-h-60"
+                                  />
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
 
                         {/* Reply mini action toolbar */}
                         <div className="flex items-center gap-5 mt-2.5 text-zinc-500 text-xs">

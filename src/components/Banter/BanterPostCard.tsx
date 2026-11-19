@@ -23,7 +23,7 @@ import {
   AvatarViewModal
 } from '../../lib/predictions/footballAvatars';
 import { ImageLightboxModal } from '../common/ImageLightboxModal';
-import { banterService } from '../../services/predictions/banterService';
+import { banterService, parsePollFromContent, parseMediaFromContent } from '../../services/predictions/banterService';
 import type { BanterPost, ReactionType } from '../../types/predictions';
 
 interface BanterPostCardProps {
@@ -176,11 +176,55 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     });
   };
 
-  const mediaList = post.mediaUrls && post.mediaUrls.length > 0
-    ? post.mediaUrls
-    : post.imageUrl
-    ? [post.imageUrl]
-    : [];
+  const parsedFromContent = useMemo(() => {
+    return parseMediaFromContent(post.content || '');
+  }, [post.content]);
+
+  const mediaList = useMemo(() => {
+    if (post.mediaUrls && post.mediaUrls.length > 0) return post.mediaUrls;
+    if (post.imageUrl) return [post.imageUrl];
+    return parsedFromContent.mediaUrls;
+  }, [post.mediaUrls, post.imageUrl, parsedFromContent.mediaUrls]);
+
+  const effectiveMediaType = useMemo(() => {
+    if (post.mediaType && post.mediaType !== 'NONE') return post.mediaType;
+    if (parsedFromContent.mediaType !== 'NONE') return parsedFromContent.mediaType;
+    return mediaList.some(u => typeof u === 'string' && u.includes('.mp4')) ? 'VIDEO' : (mediaList.length > 1 ? 'DUAL_IMAGE' : (mediaList.length === 1 ? 'IMAGE' : 'NONE'));
+  }, [post.mediaType, parsedFromContent.mediaType, mediaList]);
+
+  const parsedPollFromContent = useMemo(() => {
+    return parsePollFromContent(post.content || '', post.id);
+  }, [post.content, post.id]);
+
+  const effectivePoll = useMemo(() => {
+    if (post.poll) return post.poll;
+    if (post.pollId) {
+      const fromSvc = banterService.getPollById(post.pollId);
+      if (fromSvc) return fromSvc;
+    }
+    return parsedPollFromContent.poll;
+  }, [post.poll, post.pollId, parsedPollFromContent.poll]);
+
+  const isPoll = Boolean(
+    post.type === 'poll' ||
+    (Array.isArray(post.type) && post.type.includes('poll')) ||
+    (Array.isArray(post.types) && post.types.includes('poll')) ||
+    effectivePoll
+  );
+
+  const displayContent = useMemo(() => {
+    let raw = post.content || '';
+    if (raw.includes('[poll:')) {
+      raw = raw.replace(/\[poll:[\s\S]*?\]/g, '').trim();
+    }
+    if (raw.includes('[media:')) {
+      raw = raw.replace(/\[media:(image|video):[^\]]+\]/g, '').trim();
+    }
+    if (!raw && effectivePoll) {
+      return effectivePoll.question;
+    }
+    return raw;
+  }, [post.content, effectivePoll]);
 
   return (
     <article
@@ -336,11 +380,11 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
             className="mt-2 text-[15px] text-zinc-100 leading-relaxed break-words whitespace-pre-wrap select-text font-normal cursor-pointer"
           >
             {renderTweetContent(
-              !expanded && post.content.length > MAX_VIEW_CHARS
-                ? `${post.content.slice(0, MAX_VIEW_CHARS).trim()}…`
-                : post.content
+              !expanded && displayContent.length > MAX_VIEW_CHARS
+                ? `${displayContent.slice(0, MAX_VIEW_CHARS).trim()}…`
+                : displayContent
             )}
-            {post.content.length > MAX_VIEW_CHARS && (
+            {displayContent.length > MAX_VIEW_CHARS && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -357,7 +401,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           {/* Media Presentation: Single Card / Dual Grid / Video */}
           {mediaList.length > 0 && (
             <div className="mt-2.5">
-              {post.mediaType === 'VIDEO' ? (
+              {effectiveMediaType === 'VIDEO' ? (
                 <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-black aspect-video max-h-72 flex items-center justify-center">
                   <video
                     src={mediaList[0]}
@@ -423,10 +467,10 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           )}
 
           {/* Interactive Community Poll */}
-          {post.poll && (
+          {isPoll && effectivePoll && (
             <div data-poll-widget onClick={(e) => e.stopPropagation()}>
               <XPollWidget
-                poll={post.poll}
+                poll={effectivePoll}
                 onPollUpdated={(updated) => {
                   post.poll = updated;
                 }}

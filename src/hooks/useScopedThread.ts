@@ -32,9 +32,9 @@ export function useScopedThread(rootPostId: string | null) {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('banter_posts_enriched')
+        .from('banter_comments')
         .select('*')
-        .eq('root_id', rootPostId)
+        .eq('post_id', rootPostId)
         .order('created_at', { ascending: true });
 
       if (!error && data) {

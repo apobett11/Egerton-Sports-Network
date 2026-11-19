@@ -248,6 +248,55 @@ export function parseMediaFromContent(rawContent: string): {
   return { cleanContent, mediaUrls, mediaType };
 }
 
+export function parsePollFromContent(rawContent: string, defaultId?: string): {
+  cleanContent: string;
+  poll: BanterPoll | null;
+} {
+  if (!rawContent || !rawContent.includes('[poll:')) {
+    return { cleanContent: rawContent || '', poll: null };
+  }
+
+  let poll: BanterPoll | null = null;
+  const cleanContent = rawContent.replace(/\[poll:([\s\S]*?)\]/g, (_, jsonStr) => {
+    try {
+      const parsed = JSON.parse(jsonStr.trim());
+      const pollId = parsed.id || defaultId || `poll-${Date.now()}`;
+      const rawOptions = parsed.options || parsed.o || [];
+      const options = rawOptions.map((opt: any, idx: number) => {
+        if (typeof opt === 'string') {
+          return { id: idx + 1, text: opt, votes: 0 };
+        }
+        return {
+          id: opt.id ?? idx + 1,
+          text: opt.text || opt.title || `Choice ${idx + 1}`,
+          votes: Number(opt.votes || 0)
+        };
+      });
+
+      if (options.length >= 2) {
+        poll = {
+          id: pollId,
+          postId: parsed.postId || defaultId || '',
+          question: parsed.question || parsed.q || 'Community Poll',
+          options,
+          totalVotes: Math.max(1, Number(parsed.totalVotes ?? parsed.total_votes ?? 1)),
+          voters: parsed.voters || {},
+          expiresAt: parsed.expiresAt || parsed.expires_at || new Date(Date.now() + 86400000).toISOString(),
+          createdAt: parsed.createdAt || parsed.created_at || new Date().toISOString()
+        };
+      }
+    } catch (e) {
+      console.warn('Failed parsing embedded poll JSON:', e);
+    }
+    return '';
+  }).trim();
+
+  return {
+    cleanContent: cleanContent || (poll ? (poll as BanterPoll).question : ''),
+    poll
+  };
+}
+
 export function checkVideoDurationLimit(duration: number, maxLimit = 15.0): boolean {
   return typeof duration === 'number' && duration > 0 && duration <= maxLimit;
 }
@@ -319,22 +368,7 @@ export function calculateReplyMetadata(parent: {
 
 export function isTestPost(post: BanterPost | { content?: string; id?: string }): boolean {
   if (!post.content || !post.content.trim()) return true;
-  if (typeof window !== 'undefined' && ((window as any).__E2E_TEST__ || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return false;
-  }
-  const c = post.content.toLowerCase();
-  return (
-    c.includes('root derby match take') ||
-    c.includes('thread alpha discussion') ||
-    c.includes('thread beta discussion') ||
-    c.includes('derby tactics: high pressing') ||
-    c.includes('root post with root_id=self') ||
-    c.includes('test post') ||
-    c.includes('level 1 reply') ||
-    c.includes('level 2 sub-reply') ||
-    c.includes('alpha exclusive message') ||
-    c.includes('paging @engineering fc')
-  );
+  return false;
 }
 
 // -------------------------------------------------------------
@@ -867,13 +901,13 @@ export class BanterService {
     try {
       const isUuid = /^[0-9a-f-]{36}$/i.test(resolvedId);
       if (isUuid) {
-        const { data, error } = await client
-          .from('banter_posts_enriched')
+        let { data, error } = await client
+          .from('banter_posts')
           .select('*')
           .eq('id', resolvedId)
           .maybeSingle();
 
-        if (!error && data) {
+        if (data) {
           this.registerPostRef(data.id, getCleanMessageRef(data.id));
           if (data.poll_id) {
             await this.syncPollsForDevice([data.poll_id], devId);
@@ -883,17 +917,28 @@ export class BanterService {
           return mapped;
         }
 
-        // If not in banter_posts_enriched, look up in banter_comments_enriched
-        const { data: cData, error: cErr } = await client
-          .from('banter_comments_enriched')
+        // If not in banter_posts, look up in banter_comments
+        let { data: cData, error: cErr } = await client
+          .from('banter_comments')
           .select('*')
           .eq('id', resolvedId)
           .maybeSingle();
 
-        if (!cErr && cData) {
+        if (cData) {
           const parsedMedia = parseMediaFromContent(cData.content || '');
+          const parsedPoll = parsePollFromContent(parsedMedia.cleanContent || cData.content || '', cData.id);
+          if (parsedPoll.poll) {
+            this.savePoll(parsedPoll.poll);
+          }
+          const mUrls = parsedMedia.mediaUrls || [];
+          const mType = parsedMedia.mediaType;
+          const hasPoll = Boolean(parsedPoll.poll);
+          const pType: BanterPostType = hasPoll ? 'poll' : (mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
+
           const mappedComment: BanterPost = {
             id: cData.id,
+            type: pType,
+            types: [pType],
             parentId: cData.post_id,
             rootId: cData.post_id,
             depth: 1,
@@ -903,10 +948,12 @@ export class BanterService {
             authorName: (cData.author_handle || 'Guest').split(' #')[0],
             authorType: cData.author_type || 'user',
             sourceType: 'user' as const,
-            content: parsedMedia.cleanContent || cData.content,
-            mediaUrls: parsedMedia.mediaUrls,
-            mediaType: parsedMedia.mediaType,
-            imageUrl: parsedMedia.mediaUrls[0] || undefined,
+            content: parsedPoll.cleanContent || parsedMedia.cleanContent || cData.content,
+            mediaUrls: mUrls,
+            mediaType: mType,
+            imageUrl: mUrls[0] || undefined,
+            poll: parsedPoll.poll || undefined,
+            pollId: parsedPoll.poll?.id || undefined,
             likesCount: cData.likes_count ?? cData.reaction_fire_count ?? 0,
             reactionFireCount: cData.reaction_fire_count ?? cData.likes_count ?? 0,
             reactionClownCount: 0,
@@ -925,13 +972,13 @@ export class BanterService {
         }
       } else {
         // Look up by clean ref in recent active posts
-        const { data: recentPosts } = await client
-          .from('banter_posts_enriched')
+        let { data: recentPosts } = await client
+          .from('banter_posts')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(100);
 
-        if (recentPosts) {
+        if (recentPosts && recentPosts.length > 0) {
           const matched = recentPosts.find((p: any) => getCleanMessageRef(p.id) === resolvedId || p.id === resolvedId);
           if (matched) {
             this.registerPostRef(matched.id, resolvedId);
@@ -949,7 +996,7 @@ export class BanterService {
   public async fetchPosts(
     filter: BanterFilterType | 'hot' | 'latest' | 'matchday',
     matchId?: string | null,
-    limit = 20,
+    limit = 100,
     offset = 0,
     deviceId?: string
   ): Promise<BanterPost[]> {
@@ -966,7 +1013,7 @@ export class BanterService {
 
     try {
       let query = client
-        .from('banter_posts_enriched')
+        .from('banter_posts')
         .select('*')
         .eq('status', 'active');
 
@@ -989,7 +1036,6 @@ export class BanterService {
         query = query.order('created_at', { ascending: false });
       }
 
-      // Paginated query: avoids returning entire tables or only device ID
       query = query.range(offset, offset + limit - 1);
       const { data, error } = await query;
 
@@ -1020,29 +1066,12 @@ export class BanterService {
         void this.syncPollsForDevice(pollIds, devId).catch(() => {});
       }
 
-      // Zero Frontend Math: presentation metrics are fetched directly from database (banter_posts_enriched)
+      // Zero prejudice: every device renders the exact messages from the database
       const posts: BanterPost[] = rawDbPosts
         .filter((d: any) => !isTestPost(d))
         .map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
 
-      // Merge local posts that are not in database yet (e.g. pending optimistic posts)
-      const unSyncedLocal = this.localPosts.filter(
-        (lp) => !lp.parentId && !posts.some((p) => p.id === lp.id) && !isTestPost(lp)
-      );
-
-      const unSyncedPollIds = unSyncedLocal.map((p) => p.pollId).filter(Boolean) as string[];
-      if (unSyncedPollIds.length > 0) {
-        void this.syncPollsForDevice(unSyncedPollIds, devId).catch(() => {});
-      }
-
-      const syncedUnSyncedLocal = unSyncedLocal.map((p) => ({
-        ...p,
-        poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined
-      }));
-
-      const combined = [...syncedUnSyncedLocal, ...posts];
-
-      const filtered = applyBanterFilter(combined, filter);
+      const filtered = applyBanterFilter(posts, filter);
       if (filtered.length > 0) {
         const result = filtered.slice(0, limit);
         if (offset === 0) {
@@ -1050,6 +1079,7 @@ export class BanterService {
         }
         return result;
       }
+      return posts;
     }
 
     // Offline / cached posts fallback
@@ -1118,9 +1148,9 @@ export class BanterService {
 
     if (isUuid) {
       try {
-        // 1. Direct comments from banter_comments_enriched
-        const { data: directComments } = await client
-          .from('banter_comments_enriched')
+        // Direct comments from banter_comments
+        let { data: directComments } = await client
+          .from('banter_comments')
           .select('*')
           .eq('post_id', effectivePostId)
           .eq('status', 'active')
@@ -1128,31 +1158,24 @@ export class BanterService {
           .limit(200);
 
         let allComments = directComments || [];
-        // If there are direct comments, check for nested/child comments in banter_comments_enriched
+        // If there are direct comments, check for nested/child comments
         if (allComments.length > 0) {
           const directIds = allComments.map((c: any) => c.id).filter(Boolean);
           if (directIds.length > 0) {
-            const { data: nestedComments } = await client
-              .from('banter_comments_enriched')
+            const { data: nestedBase } = await client
+              .from('banter_comments')
               .select('*')
               .in('post_id', directIds)
               .eq('status', 'active')
               .order('created_at', { ascending: true })
               .limit(200);
-            if (nestedComments && nestedComments.length > 0) {
-              allComments = [...allComments, ...nestedComments];
+            if (nestedBase && nestedBase.length > 0) {
+              allComments = [...allComments, ...nestedBase];
             }
           }
         }
 
-        // 2. Replies stored in banter_posts_enriched (parent_id or root_id)
-        const { data: postReplies } = await client
-          .from('banter_posts_enriched')
-          .select('*')
-          .or(`root_id.eq.${effectivePostId},parent_id.eq.${effectivePostId}`)
-          .eq('status', 'active')
-          .order('created_at', { ascending: true })
-          .limit(200);
+        const postReplies: any[] = [];
 
         // Check for legacy poll comment and extract if activePost has no poll
         const pollComment = allComments.find((c: any) => c.author_handle === 'poll_bot' || (c.content && c.content.startsWith('[poll:')));
@@ -1182,6 +1205,10 @@ export class BanterService {
 
         const mappedComments: BanterPost[] = userComments.map((d: any) => {
           const parsedMedia = parseMediaFromContent(d.content || '');
+          const parsedPoll = parsePollFromContent(parsedMedia.cleanContent || d.content || '', d.id);
+          if (parsedPoll.poll) {
+            this.savePoll(parsedPoll.poll);
+          }
           let aType = d.author_type || 'user';
           let aBadge = d.author_badge;
           if (aType === 'coach' || (aBadge || '').toLowerCase().includes('coach')) {
@@ -1189,7 +1216,8 @@ export class BanterService {
           }
           const mUrls = parsedMedia.mediaUrls || [];
           const mType = parsedMedia.mediaType;
-          const pType: BanterPostType = mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text');
+          const hasPoll = Boolean(parsedPoll.poll);
+          const pType: BanterPostType = hasPoll ? 'poll' : (mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
           return {
             id: d.id,
             type: pType,
@@ -1204,10 +1232,12 @@ export class BanterService {
             authorName: (d.author_handle || 'Fanatic').split(' #')[0],
             authorType: aType,
             authorBadge: aBadge,
-            content: parsedMedia.cleanContent || d.content,
+            content: parsedPoll.cleanContent || parsedMedia.cleanContent || d.content,
             mediaUrls: mUrls,
             mediaType: mType,
             imageUrl: mUrls[0] || undefined,
+            poll: parsedPoll.poll || undefined,
+            pollId: parsedPoll.poll?.id || undefined,
             sourceType: 'user' as const,
             likesCount: d.likes_count ?? d.reaction_fire_count ?? 0,
             reactionFireCount: d.reaction_fire_count ?? d.likes_count ?? 0,
@@ -1383,30 +1413,62 @@ export class BanterService {
     }
     mediaUrls = uploadedMediaUrls;
 
-    // Format content with media tags keeping within check constraints
-    const maxChars = opts.parentId ? 200 : 280;
-    let formattedContent = sanitizedContent;
+    // Format content with media tags preserving complete media URLs
+    let formattedContent = sanitizedContent.slice(0, 280);
     if (mediaUrls.length > 0) {
       const tag = finalMediaType === 'VIDEO' ? 'video' : 'image';
       for (const url of mediaUrls) {
         if (!url.startsWith('data:') && !formattedContent.includes(url)) {
           const appendTag = ` [media:${tag}:${url}]`;
-          if ((formattedContent + appendTag).length <= maxChars) {
-            formattedContent = `${formattedContent}${appendTag}`.trim();
-          }
+          formattedContent = `${formattedContent}${appendTag}`.trim();
         }
       }
     }
-    if (formattedContent.length > maxChars) {
-      formattedContent = formattedContent.slice(0, maxChars).trim();
+
+    // Embed Poll if provided (for both root messages and thread replies)
+    let pollObj: BanterPoll | null = null;
+    let pollId: string | null = null;
+    if (opts.poll && opts.poll.options && opts.poll.options.length >= 2) {
+      const sanitizedQ = sanitizePostText(opts.poll.question).slice(0, 70) || 'Community Poll';
+      const sanitizedOpts = opts.poll.options.map(o => sanitizePostText(o).slice(0, 50)).filter(Boolean);
+      pollId = opts.poll.id || (postId ? `poll-${postId}` : `poll-${Date.now()}`);
+      pollObj = {
+        id: pollId,
+        postId: postId || '',
+        question: sanitizedQ,
+        options: sanitizedOpts.map((optText, idx) => ({ id: idx + 1, text: optText, votes: 0 })),
+        totalVotes: 1,
+        voters: {},
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        createdAt: new Date().toISOString()
+      };
+      this.savePoll(pollObj);
+
+      // Embed poll JSON directly inside content so it lives within the message thread without extra tables
+      const pollTag = `[poll:${JSON.stringify({
+        id: pollObj.id,
+        question: pollObj.question,
+        options: pollObj.options,
+        totalVotes: pollObj.totalVotes,
+        voters: pollObj.voters,
+        createdAt: pollObj.createdAt,
+        expiresAt: pollObj.expiresAt
+      })}]`;
+      if (!formattedContent.includes('[poll:')) {
+        formattedContent = formattedContent ? `${formattedContent} ${pollTag}` : `${pollObj.question} ${pollTag}`;
+      }
     }
-    if (!formattedContent && !hasPoll) {
-      formattedContent = 'Matchday take';
+
+    if (!formattedContent) {
+      formattedContent = pollObj ? pollObj.question : 'Matchday take';
     }
 
     // Determine post types
-    const declaredType: BanterPostType = hasPoll ? 'poll' : (finalMediaType === 'VIDEO' ? 'video' : (mediaUrls.length > 0 ? 'image' : 'text'));
+    const declaredType: BanterPostType = pollObj ? 'poll' : (finalMediaType === 'VIDEO' ? 'video' : (mediaUrls.length > 0 ? 'image' : 'text'));
     const declaredTypes: BanterPostType[] = [declaredType];
+    if (declaredType !== 'text' && sanitizedContent) {
+      declaredTypes.push('text');
+    }
 
     // Strict Start at 0: Real raw metrics begin at 0. Database calculates smooth S-curve dynamically.
     const baselineImpressions = 0;
@@ -1435,7 +1497,8 @@ export class BanterService {
             authorType: dbAuthorType,
             authorBadge: dbBadge,
             mediaUrls,
-            mediaType: finalMediaType
+            mediaType: finalMediaType,
+            poll: opts.poll
           })
         });
         if (res.ok) {
@@ -1450,7 +1513,7 @@ export class BanterService {
           post_id: opts.parentId,
           author_handle: effectiveAuthorHandle,
           author_type: dbAuthorType,
-          content: (formattedContent || 'Reply take').slice(0, 200),
+          content: formattedContent || (pollObj ? pollObj.question : 'Reply take'),
           status: 'active'
         };
         if (postId) commentPayload.id = postId;
@@ -1486,11 +1549,13 @@ export class BanterService {
         throw new Error('Database write failed for reply message.');
       }
 
-      const replyType: BanterPostType = finalMediaType === 'VIDEO' ? 'video' : (mediaUrls.length > 0 ? 'image' : 'text');
+      const replyType: BanterPostType = pollObj ? 'poll' : (finalMediaType === 'VIDEO' ? 'video' : (mediaUrls.length > 0 ? 'image' : 'text'));
       const replyPost: BanterPost = {
         id: savedDbRow.id,
         type: replyType,
-        types: [replyType],
+        types: pollObj ? ['poll'] : declaredTypes,
+        poll: pollObj || undefined,
+        pollId: pollObj?.id || undefined,
         parentId: opts.parentId,
         rootId: opts.rootId || opts.parentId,
         depth: 1,
@@ -1509,7 +1574,7 @@ export class BanterService {
         authorAvatar: effectiveAuthorAvatar,
         authorType: opts.authorType || 'user',
         authorBadge: dbBadge,
-        content: sanitizedContent,
+        content: sanitizedContent || (pollObj ? pollObj.question : ''),
         mediaUrls,
         mediaType: finalMediaType,
         imageUrl: mediaUrls[0] || undefined,
@@ -1535,25 +1600,6 @@ export class BanterService {
     }
 
     // Handle Root Post
-    let pollObj: BanterPoll | null = null;
-    let pollId: string | null = null;
-    if (opts.poll && opts.poll.options && opts.poll.options.length >= 2) {
-      const sanitizedQ = sanitizePostText(opts.poll.question).slice(0, 70) || 'Community Poll';
-      const sanitizedOpts = opts.poll.options.map(o => sanitizePostText(o).slice(0, 50)).filter(Boolean);
-      pollId = opts.poll.id || (postId ? `poll-${postId}` : `poll-${Date.now()}`);
-      pollObj = {
-        id: pollId,
-        postId: postId || '',
-        question: sanitizedQ,
-        options: sanitizedOpts.map((optText, idx) => ({ id: idx + 1, text: optText, votes: 0 })),
-        totalVotes: 1,
-        voters: {},
-        expiresAt: new Date(Date.now() + 86400000).toISOString(),
-        createdAt: new Date().toISOString()
-      };
-      this.savePoll(pollObj);
-    }
-
     // 1. Try server-side API first
     try {
       const res = await fetch('/api/messages', {
@@ -1578,13 +1624,13 @@ export class BanterService {
       }
     } catch {}
 
-    // 2. Direct authorized database write
+    // 2. Direct authorized database write (only valid columns in banter_posts schema)
     if (!savedDbRow && supabaseBanterAdmin) {
       const postPayload: any = {
         author_handle: effectiveAuthorHandle,
         author_type: dbAuthorType,
         author_badge: dbBadge || null,
-        content: (formattedContent || 'Matchday take').slice(0, 280),
+        content: formattedContent || (pollObj ? pollObj.question : 'Matchday take'),
         source_type: 'user',
         status: 'active',
         match_id: opts.matchId || null,
@@ -1598,7 +1644,6 @@ export class BanterService {
         repost_count: baselineReposts
       };
       if (postId) postPayload.id = postId;
-      if (pollId) postPayload.poll_id = pollId;
 
       const { data, error } = await supabaseBanterAdmin
         .from('banter_posts')
@@ -1616,30 +1661,17 @@ export class BanterService {
       throw new Error('Database write failed. Post was not stored.');
     }
 
-    // Persist poll into banter_polls table directly
-    if (pollObj && supabaseBanterAdmin) {
+    // Associate poll with stored row ID
+    if (pollObj) {
       pollObj.postId = savedDbRow.id;
-      try {
-        await supabaseBanterAdmin.from('banter_polls').upsert([{
-          id: pollObj.id,
-          post_id: savedDbRow.id,
-          question: pollObj.question,
-          options: pollObj.options,
-          total_votes: 0,
-          voters: {},
-          expires_at: pollObj.expiresAt
-        }]);
-        await supabaseBanterAdmin.from('banter_posts').update({ poll_id: pollObj.id }).eq('id', savedDbRow.id);
-      } catch (pollErr) {
-        console.warn('Poll table persist deferred:', pollErr);
-      }
+      this.savePoll(pollObj);
     }
 
     // Build the confirmed post with its DB numbers attached directly
     const finalPost: BanterPost = {
       id: savedDbRow.id,
-      type: declaredType,
-      types: declaredTypes,
+      type: pollObj ? 'poll' : declaredType,
+      types: pollObj ? ['poll'] : declaredTypes,
       parentId: null,
       rootId: savedDbRow.id,
       depth: 0,
@@ -1657,7 +1689,7 @@ export class BanterService {
       authorAvatar: effectiveAuthorAvatar,
       authorType: (savedDbRow.author_type || dbAuthorType) as AuthorType,
       authorBadge: savedDbRow.author_badge || dbBadge || undefined,
-      content: sanitizedContent,
+      content: sanitizedContent || (pollObj ? pollObj.question : ''),
       mediaUrls,
       mediaType: finalMediaType,
       imageUrl: mediaUrls[0] || undefined,
@@ -1994,20 +2026,8 @@ export class BanterService {
         post.id = data.id;
         const targetPoll = poll || post.poll;
         if (targetPoll) {
+          targetPoll.postId = data.id;
           this.savePoll(targetPoll);
-          try {
-            await supabase.from('banter_polls').upsert([{
-              id: targetPoll.id,
-              post_id: data.id,
-              question: targetPoll.question,
-              options: targetPoll.options,
-              total_votes: targetPoll.totalVotes || 0,
-              voters: targetPoll.voters || {},
-              expires_at: targetPoll.expiresAt
-            }]);
-          } catch (pollErr) {
-            console.warn('Poll backend persist deferred:', pollErr);
-          }
         }
         return;
       }
@@ -2251,45 +2271,35 @@ export class BanterService {
       authorBadge = formatCoachTag(d.tagged_team_name, authorBadge);
     }
 
-    const parsedMedia = parseMediaFromContent(d.content || '');
-    const cleanContent = parsedMedia.cleanContent || d.content;
+    const parsedPoll = parsePollFromContent(d.content || '', d.id);
+    const parsedMedia = parseMediaFromContent(parsedPoll.cleanContent);
+    let cleanContent = parsedMedia.cleanContent || (parsedPoll.poll ? parsedPoll.poll.question : d.content);
     const mediaUrls = d.media_urls || (parsedMedia.mediaUrls.length > 0 ? parsedMedia.mediaUrls : (d.image_url ? [d.image_url] : []));
     const mediaType = d.media_type || (parsedMedia.mediaType !== 'NONE' ? parsedMedia.mediaType : (mediaUrls.length > 1 ? 'DUAL_IMAGE' : (mediaUrls.length === 1 ? 'IMAGE' : 'NONE')));
-    const pollId = d.poll_id || null;
-    let poll = pollId ? this.getPollById(pollId) : undefined;
-
-    if (!poll && cleanContent && cleanContent.includes('[poll:')) {
-      const match = cleanContent.match(/\[poll:(.*?)\]/);
-      if (match) {
-        try {
-          const parsed = JSON.parse(match[1]);
-          poll = {
-            id: pollId || `poll-${d.id}`,
-            postId: d.id,
-            question: parsed.q || 'Community Poll',
-            options: (parsed.o || []).map((text: string, idx: number) => ({ id: idx + 1, text, votes: 0 })),
-            totalVotes: 0,
-            voters: {},
-            expiresAt: new Date(Date.now() + 86400000).toISOString()
-          };
-        } catch {}
-      }
+    
+    let poll = parsedPoll.poll || (d.poll_id ? this.getPollById(d.poll_id) : undefined);
+    if (!poll && (d.type === 'poll' || (Array.isArray(d.type) && d.type.includes('poll')) || (Array.isArray(d.types) && d.types.includes('poll')))) {
+      poll = this.getPollById(d.id) || this.getPollById(`poll-${d.id}`);
     }
 
-    if (poll && deviceId && !poll.voters[deviceId]) {
-      const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(`egerscore_poll_voted_${poll.id}`) : null;
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          const opt = typeof parsed === 'number' ? parsed : parsed?.optionId;
-          if (opt !== undefined) {
-            poll = { ...poll, voters: { ...poll.voters, [deviceId]: Number(opt) } };
-          }
-        } catch {}
+    if (poll) {
+      if (deviceId && (!poll.voters || !poll.voters[deviceId])) {
+        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(`egerscore_poll_voted_${poll.id}`) : null;
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            const opt = typeof parsed === 'number' ? parsed : parsed?.optionId;
+            if (opt !== undefined) {
+              poll = { ...poll, voters: { ...(poll.voters || {}), [deviceId]: Number(opt) } };
+            }
+          } catch {}
+        }
       }
+      this.savePoll(poll);
+      if (!cleanContent) cleanContent = poll.question;
     }
 
-    const hasPoll = Boolean(pollId || poll || (cleanContent && cleanContent.includes('[poll:')));
+    const hasPoll = Boolean(poll || (d.type === 'poll') || (Array.isArray(d.type) && d.type.includes('poll')) || (Array.isArray(d.types) && d.types.includes('poll')));
     const hasVideo = mediaType === 'VIDEO' || mediaUrls.some((u: string) => typeof u === 'string' && u.includes('.mp4'));
     const hasImage = mediaType === 'IMAGE' || mediaType === 'DUAL_IMAGE' || mediaUrls.length > 0 || Boolean(d.image_url);
     const postType: BanterPostType = hasPoll ? 'poll' : (hasVideo ? 'video' : (hasImage ? 'image' : 'text'));
@@ -2298,8 +2308,8 @@ export class BanterService {
 
     return {
       id: d.id,
-      type: d.type || postType,
-      types: d.types || postTypes,
+      type: postType,
+      types: postTypes,
       parentId: d.parent_id || null,
       rootId: d.root_id || d.id,
       depth: d.depth || 0,
@@ -2330,7 +2340,7 @@ export class BanterService {
       impressionsCount: d.impressions_count ?? d.impressions ?? 0,
       viewsCount: d.views_count ?? d.views ?? (d.impressions_count ? Math.floor(d.impressions_count * 0.42) : 0),
       bookmarksCount: d.bookmarks_count ?? 0,
-      pollId,
+      pollId: poll ? poll.id : (d.poll_id || undefined),
       poll: poll || undefined,
       taggedTeamId: d.tagged_team_id || null,
       taggedTeamName: d.tagged_team_name || null,
@@ -2351,7 +2361,7 @@ export class BanterService {
 
     try {
       let query = supabase
-        .from('banter_posts_enriched')
+        .from('banter_posts')
         .select('*')
         .eq('status', 'active');
 
@@ -2359,11 +2369,11 @@ export class BanterService {
         query = query.or(`content.ilike.%@${teamName}%,content.ilike.%${teamName}%,author_handle.ilike.%${teamName}%`);
       }
 
-      const { data, error } = await query
+      let { data, error } = await query
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
 
-      if (!error && data && data.length > 0) {
+      if (data && data.length > 0) {
         const posts = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
         return posts;
       }
