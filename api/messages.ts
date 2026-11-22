@@ -20,9 +20,20 @@ function sanitizeText(str: string): string {
     .trim();
 }
 
+function getPostHash(id?: string): number {
+  if (!id) return 42;
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash << 5) - hash) + id.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 export function calculateDynamicMetrics(post: {
   id?: string;
   created_at?: string;
+  createdAt?: string;
   impressions_count?: number;
   repost_count?: number;
   views_count?: number;
@@ -31,11 +42,54 @@ export function calculateDynamicMetrics(post: {
   reaction_skull_count?: number;
   comment_count?: number;
   is_trending?: boolean;
+  parent_id?: string | null;
 }) {
-  const impressions = post.impressions_count ?? 0;
-  const reposts = post.repost_count ?? 0;
-  const views = post.views_count ?? (impressions > 0 ? Math.floor(impressions * 0.42) : 0);
-  const isTrending = Boolean(post.is_trending ?? (impressions > 1500));
+  const createdStr = post.created_at || post.createdAt;
+  const now = Date.now();
+  const createdTime = createdStr ? new Date(createdStr).getTime() : now;
+  const ageSec = Math.max(0, Math.floor((now - createdTime) / 1000));
+  const seed = getPostHash(post.id);
+  const seedMod = seed % 95; // 0 to 94
+
+  const reactions = (post.reaction_fire_count || 0) + (post.reaction_clown_count || 0) + (post.reaction_skull_count || 0);
+  const comments = post.comment_count || 0;
+  const dbImpressions = post.impressions_count ?? 0;
+  const dbReposts = post.repost_count ?? 0;
+  const dbViews = post.views_count ?? 0;
+
+  let impressions = 0;
+  if (ageSec <= 0) {
+    impressions = dbImpressions > 0 ? dbImpressions : 0;
+  } else {
+    const T = ageSec / 10800; // 1.0 at exactly 3 hours (10800s)
+    let simulated = 0;
+    if (T < 1.0) {
+      // 0 to 3 hours: smooth progression from 0 towards 505 + seedMod
+      const targetAt3h = 505 + seedMod;
+      simulated = Math.floor(Math.pow(T, 1.25) * targetAt3h);
+    } else {
+      // >= 3 hours: strictly >= 505, smoothly growing with log curve
+      const baseAt3h = 505 + seedMod;
+      const growth = Math.min(1100, Math.floor(380 * Math.log(T)));
+      const engagementBonus = Math.min(300, reactions * 4 + comments * 6);
+      simulated = Math.min(1880, baseAt3h + growth + engagementBonus);
+    }
+
+    impressions = Math.max(dbImpressions, simulated);
+    // Guarantee: all messages after 3 hours must be strictly above 500 impressions
+    if (ageSec >= 10800) {
+      impressions = Math.max(505 + seedMod, impressions);
+    }
+  }
+
+  const views = impressions > 0 ? (dbViews > 0 ? Math.max(dbViews, Math.floor(impressions * 0.42)) : Math.floor(impressions * 0.42)) : 0;
+  const reposts = (post.parent_id)
+    ? dbReposts
+    : (impressions > 60 ? Math.max(dbReposts, Math.floor(impressions * 0.012) + (reactions > 6 ? 1 : 0)) : dbReposts);
+
+  // Trending flag is strictly false by default and assigned to only one message across the feed
+  const isTrending = Boolean(post.is_trending);
+
   return { impressions, reposts, views, isTrending };
 }
 
@@ -180,30 +234,33 @@ export default async function handler(req: any, res: any) {
           return;
         }
 
-        // 1. Direct comments from banter_comments
-        let { data: comments } = await supabaseAdmin
-          .from('banter_comments')
-          .select('*')
-          .eq('post_id', threadId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: true })
-          .limit(200);
+        // 1. Direct and nested comments from banter_comments (iterative deep load)
+        let allComments: any[] = [];
+        let parentIds = [threadId];
+        let depth = 0;
+        const seenCommentIds = new Set<string>();
 
-        let allComments = comments || [];
-        if (allComments.length > 0) {
-          const cIds = allComments.map((c: any) => c.id).filter(Boolean);
-          if (cIds.length > 0) {
-            let { data: nested } = await supabaseAdmin
-              .from('banter_comments')
-              .select('*')
-              .in('post_id', cIds)
-              .eq('status', 'active')
-              .limit(200);
+        while (parentIds.length > 0 && depth < 8) {
+          const { data: batch } = await supabaseAdmin
+            .from('banter_comments')
+            .select('*')
+            .in('post_id', parentIds)
+            .eq('status', 'active')
+            .order('created_at', { ascending: true })
+            .limit(200);
 
-            if (nested && nested.length > 0) {
-              allComments = [...allComments, ...nested];
+          if (!batch || batch.length === 0) break;
+
+          const nextParentIds: string[] = [];
+          for (const item of batch) {
+            if (!seenCommentIds.has(item.id)) {
+              seenCommentIds.add(item.id);
+              allComments.push(item);
+              nextParentIds.push(item.id);
             }
           }
+          parentIds = nextParentIds;
+          depth++;
         }
 
         // Extract poll if present from content or embedded tag
@@ -237,17 +294,47 @@ export default async function handler(req: any, res: any) {
         combinedReplies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
         const updatedReplies = combinedReplies.map((r: any) => {
-          const parentAuthor = (r.post_id === threadId || r.parent_id === threadId)
+          let directParentId = r.post_id;
+          let replyContent = r.content || '';
+          const tagIdx = replyContent.indexOf('[reply_to:');
+          if (tagIdx !== -1) {
+            const endIdx = replyContent.indexOf(']', tagIdx);
+            if (endIdx !== -1) {
+              directParentId = replyContent.slice(tagIdx + 10, endIdx);
+              replyContent = (replyContent.slice(0, tagIdx) + replyContent.slice(endIdx + 1)).trim();
+            }
+          }
+
+          const parentAuthor = (directParentId === threadId || directParentId === post.id)
             ? post.author_handle
-            : (combinedReplies.find(x => x.id === (r.post_id || r.parent_id))?.author_handle || post.author_handle);
-          const parsedReplyPoll = parsePollFromContent(r.content || '', r.id);
-          const parsedReplyMedia = parseMediaFromContent(parsedReplyPoll.cleanContent || r.content || '');
+            : (combinedReplies.find(x => x.id === directParentId)?.author_handle || post.author_handle);
+          const parsedReplyPoll = parsePollFromContent(replyContent, r.id);
+          const parsedReplyMedia = parseMediaFromContent(parsedReplyPoll.cleanContent || replyContent);
           const mUrls = r.media_urls || (parsedReplyMedia.mediaUrls.length > 0 ? parsedReplyMedia.mediaUrls : (r.image_url ? [r.image_url] : []));
           const mType = r.media_type || (parsedReplyMedia.mediaType !== 'NONE' ? parsedReplyMedia.mediaType : (mUrls.length > 0 ? 'IMAGE' : 'NONE'));
           const rType = parsedReplyPoll.poll ? 'poll' : (mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
+
+          const dynamic = calculateDynamicMetrics({
+            id: r.id,
+            created_at: r.created_at,
+            createdAt: r.created_at,
+            impressions_count: r.impressions_count ?? r.impressions,
+            views_count: r.views_count ?? r.views,
+            repost_count: r.repost_count ?? r.reposts_count,
+            reaction_fire_count: r.reaction_fire_count || r.likes_count || 0,
+            comment_count: 0,
+            parent_id: directParentId,
+            is_trending: false
+          });
+
           return {
             ...r,
-            content: parsedReplyPoll.cleanContent || parsedReplyMedia.cleanContent || r.content,
+            parent_id: directParentId,
+            parentId: directParentId,
+            root_id: threadId,
+            rootId: threadId,
+            depth: directParentId === threadId ? 1 : 2,
+            content: parsedReplyPoll.cleanContent || parsedReplyMedia.cleanContent || replyContent,
             media_urls: mUrls,
             mediaUrls: mUrls,
             media_type: mType,
@@ -260,16 +347,39 @@ export default async function handler(req: any, res: any) {
             types: [rType],
             replying_to: parentAuthor,
             replyingToHandle: parentAuthor,
-            impressions_count: r.impressions_count ?? r.impressions ?? 0,
-            repost_count: r.repost_count ?? r.reposts_count ?? 0,
-            views_count: r.views_count ?? r.views ?? 0
+            impressions_count: dynamic.impressions,
+            impressions: dynamic.impressions,
+            views_count: dynamic.views,
+            views: dynamic.views,
+            repost_count: dynamic.reposts,
+            repostsCount: dynamic.reposts,
+            is_trending: false,
+            isTrending: false
           };
         });
 
-        // Use database computed metrics directly without frontend simulation
-        post.impressions_count = post.impressions_count ?? post.impressions ?? 0;
-        post.repost_count = post.repost_count ?? post.reposts_count ?? 0;
-        post.views_count = post.views_count ?? post.views ?? 0;
+        // Compute dynamic metrics for the root post
+        const postDynamic = calculateDynamicMetrics({
+          id: post.id,
+          created_at: post.created_at,
+          createdAt: post.created_at,
+          impressions_count: post.impressions_count ?? post.impressions,
+          views_count: post.views_count ?? post.views,
+          repost_count: post.repost_count ?? post.reposts_count,
+          reaction_fire_count: post.reaction_fire_count,
+          reaction_clown_count: post.reaction_clown_count,
+          reaction_skull_count: post.reaction_skull_count,
+          comment_count: updatedReplies.length,
+          is_trending: post.is_trending,
+          parent_id: null
+        });
+
+        post.impressions_count = postDynamic.impressions;
+        post.impressions = postDynamic.impressions;
+        post.views_count = postDynamic.views;
+        post.views = postDynamic.views;
+        post.repost_count = postDynamic.reposts;
+        post.repostsCount = postDynamic.reposts;
         post.comment_count = updatedReplies.length;
         if (pollData) {
           post.poll = pollData;
@@ -312,6 +422,22 @@ export default async function handler(req: any, res: any) {
         const mUrls = p.media_urls || (parsedMedia.mediaUrls.length > 0 ? parsedMedia.mediaUrls : (p.image_url ? [p.image_url] : []));
         const mType = p.media_type || (parsedMedia.mediaType !== 'NONE' ? parsedMedia.mediaType : (mUrls.length > 0 ? 'IMAGE' : 'NONE'));
         const pType = parsed.poll ? 'poll' : (mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
+
+        const dynamic = calculateDynamicMetrics({
+          id: p.id,
+          created_at: p.created_at,
+          createdAt: p.created_at,
+          impressions_count: p.impressions_count ?? p.impressions,
+          views_count: p.views_count ?? p.views,
+          repost_count: p.repost_count ?? p.reposts_count,
+          reaction_fire_count: p.reaction_fire_count,
+          reaction_clown_count: p.reaction_clown_count,
+          reaction_skull_count: p.reaction_skull_count,
+          comment_count: p.comment_count,
+          parent_id: p.parent_id,
+          is_trending: false
+        });
+
         return {
           ...p,
           content: parsed.cleanContent || parsedMedia.cleanContent || (parsed.poll ? parsed.poll.question : p.content),
@@ -324,9 +450,50 @@ export default async function handler(req: any, res: any) {
           poll: parsed.poll || null,
           pollId: parsed.poll?.id || null,
           type: pType,
-          types: [pType]
+          types: [pType],
+          impressions_count: dynamic.impressions,
+          impressions: dynamic.impressions,
+          views_count: dynamic.views,
+          views: dynamic.views,
+          repost_count: dynamic.reposts,
+          repostsCount: dynamic.reposts,
+          is_trending: false,
+          isTrending: false
         };
       });
+
+      // Trending flag is placed strictly on ONLY ONE message across the feed (the single #1 leader)
+      if (updatedPosts.length > 0) {
+        const rootPosts = updatedPosts.filter((p: any) => !p.parent_id && !p.parentId);
+        const candidates = rootPosts.length > 0 ? rootPosts : updatedPosts;
+        const sorted = [...candidates].sort((a: any, b: any) => {
+          const engA = (a.reaction_fire_count || 0) * 3 + (a.comment_count || 0) * 5 + (a.repost_count || 0) * 2;
+          const engB = (b.reaction_fire_count || 0) * 3 + (b.comment_count || 0) * 5 + (b.repost_count || 0) * 2;
+          if (engB !== engA) return engB - engA;
+          return (b.impressions_count || 0) - (a.impressions_count || 0);
+        });
+
+        if (sorted[0]) {
+          const topLeaderId = sorted[0].id;
+          updatedPosts.forEach((p: any) => {
+            if (p.id === topLeaderId) {
+              p.is_trending = true;
+              p.isTrending = true;
+              if (p.impressions_count <= 1500) {
+                p.impressions_count = 1500 + Math.min(440, 220 + ((p.reaction_fire_count || 0) * 2));
+              } else if (p.impressions_count > 1940) {
+                p.impressions_count = 1940;
+              }
+              p.impressions = p.impressions_count;
+              p.views_count = Math.floor(p.impressions_count * 0.42);
+              p.views = p.views_count;
+            } else {
+              p.is_trending = false;
+              p.isTrending = false;
+            }
+          });
+        }
+      }
 
       res.statusCode = 200;
       res.end(JSON.stringify({ posts: updatedPosts }));
@@ -404,19 +571,63 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
+      const rawDeviceId = body.deviceId || body.authorDeviceId || null;
+      const effectiveDeviceId = (rawDeviceId && /^[0-9a-f-]{36}$/i.test(rawDeviceId)) ? rawDeviceId : null;
+
       if (parentId) {
-        // Reply under a message: stored in banter_comments
+        // Resolve target post in banter_posts (banter_comments.post_id references banter_posts.id)
+        let targetPostId = parentId;
+        let isDeepReply = false;
+
+        if (body.rootId && body.rootId !== parentId) {
+          targetPostId = body.rootId;
+          isDeepReply = true;
+        } else {
+          const { data: directPost } = await supabaseAdmin
+            .from('banter_posts')
+            .select('id')
+            .eq('id', parentId)
+            .maybeSingle();
+
+          if (!directPost) {
+            const { data: parentComment } = await supabaseAdmin
+              .from('banter_comments')
+              .select('post_id')
+              .eq('id', parentId)
+              .maybeSingle();
+
+            if (parentComment?.post_id) {
+              targetPostId = parentComment.post_id;
+              isDeepReply = true;
+            }
+          }
+        }
+
+        let replyContent = finalContent || (pollObj ? pollObj.question : 'Reply take');
+        if (isDeepReply && !replyContent.includes('[reply_to:')) {
+          replyContent = `${replyContent} [reply_to:${parentId}]`.trim();
+        }
+
         const commentId = (id && /^[0-9a-f-]{36}$/i.test(id))
           ? id
           : ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined);
         const commentPayload: any = {
-          post_id: parentId,
+          post_id: targetPostId,
           author_handle: sanitizedHandle || 'Fanatic',
           author_type: authorType || 'user',
-          content: finalContent || (pollObj ? pollObj.question : 'Reply take'),
+          content: replyContent,
           status: 'active'
         };
         if (commentId) commentPayload.id = commentId;
+
+        if (effectiveDeviceId) {
+          const { data: dRow } = await supabaseAdmin
+            .from('anonymous_devices')
+            .select('device_id')
+            .eq('device_id', effectiveDeviceId)
+            .maybeSingle();
+          if (dRow) commentPayload.device_id = effectiveDeviceId;
+        }
 
         const { data: reply, error: replyErr } = await supabaseAdmin
           .from('banter_comments')
@@ -430,18 +641,18 @@ export default async function handler(req: any, res: any) {
           return;
         }
 
-        // Increment parent post comment_count
+        // Increment root post comment_count
         const { data: p } = await supabaseAdmin
           .from('banter_posts')
           .select('comment_count')
-          .eq('id', parentId)
+          .eq('id', targetPostId)
           .single();
 
         if (p) {
           await supabaseAdmin
             .from('banter_posts')
             .update({ comment_count: (p.comment_count || 0) + 1 })
-            .eq('id', parentId);
+            .eq('id', targetPostId);
         }
 
         const parentAuthor = req.body?.replyingToHandle || null;
@@ -450,6 +661,14 @@ export default async function handler(req: any, res: any) {
         reply.types = [rType];
         reply.replying_to = parentAuthor;
         reply.replyingToHandle = parentAuthor;
+        reply.impressions_count = 0;
+        reply.impressions = 0;
+        reply.views_count = 0;
+        reply.views = 0;
+        reply.repost_count = 0;
+        reply.repostsCount = 0;
+        reply.is_trending = false;
+        reply.isTrending = false;
         if (pollObj) {
           reply.poll = pollObj;
           reply.pollId = pollObj.id;
@@ -460,14 +679,13 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
-      // Root message: stored in banter_posts
+      // Root message: stored in banter_posts with strict default 0 metrics
       const declaredType = pollObj ? 'poll' : (mediaType === 'VIDEO' ? 'video' : (uploadedMediaUrls.length > 0 ? 'image' : 'text'));
 
       const validAuthorTypes = ['user', 'journalist', 'admin', 'seed'];
       const dbAuthorType = validAuthorTypes.includes(authorType) ? authorType : 'user';
       const dbBadge = authorType === 'coach' ? (sanitizedBadge || 'HEAD COACH') : sanitizedBadge;
 
-      const baselineImpressions = Math.floor(18 + Math.random() * 24);
       const postPayload: any = {
         author_handle: sanitizedHandle || 'Fanatic',
         author_type: dbAuthorType,
@@ -481,10 +699,19 @@ export default async function handler(req: any, res: any) {
         reaction_clown_count: 0,
         reaction_skull_count: 0,
         comment_count: 0,
-        impressions_count: baselineImpressions,
-        views_count: Math.max(1, Math.floor(baselineImpressions * 0.4)),
+        impressions_count: 0,
+        views_count: 0,
         repost_count: 0
       };
+
+      if (effectiveDeviceId) {
+        const { data: dRow } = await supabaseAdmin
+          .from('anonymous_devices')
+          .select('device_id')
+          .eq('device_id', effectiveDeviceId)
+          .maybeSingle();
+        if (dRow) postPayload.device_id = effectiveDeviceId;
+      }
 
       if (id && /^[0-9a-f-]{36}$/i.test(id)) {
         postPayload.id = id;
@@ -511,6 +738,14 @@ export default async function handler(req: any, res: any) {
 
       post.type = declaredType;
       post.types = [declaredType];
+      post.impressions_count = 0;
+      post.impressions = 0;
+      post.views_count = 0;
+      post.views = 0;
+      post.repost_count = 0;
+      post.repostsCount = 0;
+      post.is_trending = false;
+      post.isTrending = false;
 
       res.statusCode = 201;
       res.end(JSON.stringify({ post }));

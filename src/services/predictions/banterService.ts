@@ -13,6 +13,16 @@ export interface PostAlgorithmMetrics {
   isTrending: boolean;
 }
 
+function getPostHash(id?: string): number {
+  if (!id) return 42;
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash << 5) - hash) + id.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 export function calculateDynamicMetrics(post: {
   id?: string;
   created_at?: string;
@@ -24,7 +34,10 @@ export function calculateDynamicMetrics(post: {
   views_count?: number;
   viewsCount?: number;
   reaction_fire_count?: number;
+  reactionFireCount?: number;
+  reaction_clown_count?: number;
   reactionClownCount?: number;
+  reaction_skull_count?: number;
   reactionSkullCount?: number;
   comment_count?: number;
   commentCount?: number;
@@ -33,11 +46,56 @@ export function calculateDynamicMetrics(post: {
   is_trending?: boolean;
   isTrending?: boolean;
 }): PostAlgorithmMetrics {
-  // Pure passthrough: all metrics are calculated and controlled strictly in the PostgreSQL database layer (banter_posts_enriched)
-  const impressions = post.impressions_count ?? post.impressionsCount ?? 0;
-  const reposts = post.repost_count ?? post.repostCount ?? 0;
-  const views = post.views_count ?? post.viewsCount ?? (impressions > 0 ? Math.floor(impressions * 0.42) : 0);
-  const isTrending = Boolean(post.is_trending ?? post.isTrending ?? (impressions > 1500));
+  const createdStr = post.created_at || post.createdAt;
+  const now = Date.now();
+  const createdTime = createdStr ? new Date(createdStr).getTime() : now;
+  const ageSec = Math.max(0, Math.floor((now - createdTime) / 1000));
+  const seed = getPostHash(post.id);
+  const seedMod = seed % 95; // 0 to 94
+
+  const fire = post.reaction_fire_count ?? post.reactionFireCount ?? 0;
+  const clown = post.reaction_clown_count ?? post.reactionClownCount ?? 0;
+  const skull = post.reaction_skull_count ?? post.reactionSkullCount ?? 0;
+  const reactions = fire + clown + skull;
+  const comments = post.comment_count ?? post.commentCount ?? 0;
+  const dbImpressions = post.impressions_count ?? post.impressionsCount ?? 0;
+  const dbReposts = post.repost_count ?? post.repostCount ?? 0;
+  const dbViews = post.views_count ?? post.viewsCount ?? 0;
+
+  let impressions = 0;
+  if (ageSec <= 0) {
+    impressions = dbImpressions > 0 ? dbImpressions : 0;
+  } else {
+    const T = ageSec / 10800; // 1.0 at 3 hours (10800s)
+    let simulated = 0;
+    if (T < 1.0) {
+      // 0 to 3 hours: smooth progression from 0 towards 505 + seedMod
+      const targetAt3h = 505 + seedMod;
+      simulated = Math.floor(Math.pow(T, 1.25) * targetAt3h);
+    } else {
+      // >= 3 hours: strictly >= 505, smoothly growing with log curve
+      const baseAt3h = 505 + seedMod;
+      const growth = Math.min(1100, Math.floor(380 * Math.log(T)));
+      const engagementBonus = Math.min(300, reactions * 4 + comments * 6);
+      simulated = Math.min(1880, baseAt3h + growth + engagementBonus);
+    }
+
+    impressions = Math.max(dbImpressions, simulated);
+    // Guarantee: all messages after 3 hours must be strictly above 500 impressions
+    if (ageSec >= 10800) {
+      impressions = Math.max(505 + seedMod, impressions);
+    }
+  }
+
+  const views = impressions > 0 ? (dbViews > 0 ? Math.max(dbViews, Math.floor(impressions * 0.42)) : Math.floor(impressions * 0.42)) : 0;
+  const isReply = Boolean(post.parent_id || post.parentId);
+  const reposts = isReply
+    ? dbReposts
+    : (impressions > 60 ? Math.max(dbReposts, Math.floor(impressions * 0.012) + (reactions > 6 ? 1 : 0)) : dbReposts);
+
+  // Trending flag is strictly false by default and assigned to only one message across the feed
+  const isTrending = Boolean(post.is_trending ?? post.isTrending ?? false);
+
   return { impressions, reposts, views, isTrending };
 }
 import {
@@ -88,6 +146,7 @@ export interface CreatePostOptions {
   authorAvatar?: string;
   authorType?: AuthorType;
   authorBadge?: string;
+  depth?: number;
 }
 
 // -------------------------------------------------------------
@@ -512,25 +571,27 @@ export function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType 
     all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  // Identify top trending post and tag with isTrending = true
+  // Trending flag is placed strictly on ONLY ONE message across the feed (the single #1 leader)
   if (all.length > 0) {
-    const trendingLeader = [...all].sort(compareTrending)[0];
-    if (trendingLeader) {
-      all.forEach((p) => {
-        p.isTrending = p.id === trendingLeader.id;
-        const isMsg = Boolean(p.parentId || (p.rootId && p.rootId !== p.id));
-        if (p.isTrending && !isMsg) {
-          // Top space for trending leader: strictly above 1,500 and capped at 1,940
-          if (!p.impressionsCount || p.impressionsCount <= 1500) {
-            p.impressionsCount = 1500 + Math.min(440, 220 + ((p.reactionFireCount || 0) * 2));
-          } else if (p.impressionsCount > 1940) {
-            p.impressionsCount = 1940;
-          }
+    const rootPosts = all.filter(p => !p.parentId && (!p.rootId || p.rootId === p.id));
+    const candidates = rootPosts.length > 0 ? rootPosts : all;
+    const trendingLeader = [...candidates].sort(compareTrending)[0];
+    all.forEach((p) => {
+      const isLeader = Boolean(trendingLeader && p.id === trendingLeader.id);
+      const isMsg = Boolean(p.parentId || (p.rootId && p.rootId !== p.id));
+      p.isTrending = isLeader && !isMsg;
+      if (p.isTrending) {
+        // Boost for the single trending leader: strictly above 1,500 and capped at 1,940
+        if (!p.impressionsCount || p.impressionsCount <= 1500) {
+          p.impressionsCount = 1500 + Math.min(440, 220 + ((p.reactionFireCount || 0) * 2));
+        } else if (p.impressionsCount > 1940) {
+          p.impressionsCount = 1940;
         }
-        // Preserve algorithm numbers for normal posts and messages
         p.impressions = p.impressionsCount;
-      });
-    }
+        p.viewsCount = Math.floor(p.impressionsCount * 0.42);
+      }
+      p.impressions = p.impressionsCount ?? p.impressions ?? 0;
+    });
   }
 
   return all;
@@ -935,6 +996,19 @@ export class BanterService {
           const hasPoll = Boolean(parsedPoll.poll);
           const pType: BanterPostType = hasPoll ? 'poll' : (mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
 
+          const dynamicComment = calculateDynamicMetrics({
+            id: cData.id,
+            created_at: cData.created_at,
+            createdAt: cData.created_at,
+            impressions_count: cData.impressions_count ?? cData.impressions ?? 0,
+            views_count: cData.views_count ?? cData.views ?? 0,
+            repost_count: cData.repost_count ?? cData.reposts_count ?? 0,
+            reaction_fire_count: cData.reaction_fire_count ?? cData.likes_count ?? 0,
+            comment_count: 0,
+            parent_id: cData.post_id,
+            is_trending: false
+          });
+
           const mappedComment: BanterPost = {
             id: cData.id,
             type: pType,
@@ -960,11 +1034,12 @@ export class BanterService {
             reactionSkullCount: 0,
             commentCount: 0,
             repliesCount: 0,
-            repostCount: cData.repost_count ?? cData.reposts_count ?? 0,
-            repostsCount: cData.repost_count ?? cData.reposts_count ?? 0,
-            impressionsCount: cData.impressions_count ?? cData.impressions ?? 0,
-            impressions: cData.impressions_count ?? cData.impressions ?? 0,
-            viewsCount: cData.views_count ?? cData.views ?? 0,
+            repostCount: dynamicComment.reposts,
+            repostsCount: dynamicComment.reposts,
+            impressionsCount: dynamicComment.impressions,
+            impressions: dynamicComment.impressions,
+            viewsCount: dynamicComment.views,
+            isTrending: false,
             createdAt: cData.created_at,
           };
           this.registerPost(mappedComment);
@@ -1148,31 +1223,33 @@ export class BanterService {
 
     if (isUuid) {
       try {
-        // Direct comments from banter_comments
-        let { data: directComments } = await client
-          .from('banter_comments')
-          .select('*')
-          .eq('post_id', effectivePostId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: true })
-          .limit(200);
+        // Direct and nested comments from banter_comments (iterative deep load)
+        let allComments: any[] = [];
+        let parentIds = [effectivePostId];
+        let depth = 0;
+        const seenCommentIds = new Set<string>();
 
-        let allComments = directComments || [];
-        // If there are direct comments, check for nested/child comments
-        if (allComments.length > 0) {
-          const directIds = allComments.map((c: any) => c.id).filter(Boolean);
-          if (directIds.length > 0) {
-            const { data: nestedBase } = await client
-              .from('banter_comments')
-              .select('*')
-              .in('post_id', directIds)
-              .eq('status', 'active')
-              .order('created_at', { ascending: true })
-              .limit(200);
-            if (nestedBase && nestedBase.length > 0) {
-              allComments = [...allComments, ...nestedBase];
+        while (parentIds.length > 0 && depth < 8) {
+          const { data: batch } = await client
+            .from('banter_comments')
+            .select('*')
+            .in('post_id', parentIds)
+            .eq('status', 'active')
+            .order('created_at', { ascending: true })
+            .limit(200);
+
+          if (!batch || batch.length === 0) break;
+
+          const nextParentIds: string[] = [];
+          for (const item of batch) {
+            if (!seenCommentIds.has(item.id)) {
+              seenCommentIds.add(item.id);
+              allComments.push(item);
+              nextParentIds.push(item.id);
             }
           }
+          parentIds = nextParentIds;
+          depth++;
         }
 
         const postReplies: any[] = [];
@@ -1204,8 +1281,19 @@ export class BanterService {
         const userPostReplies = (postReplies || []).filter((p: any) => p.id !== effectivePostId && !isTestPost(p));
 
         const mappedComments: BanterPost[] = userComments.map((d: any) => {
-          const parsedMedia = parseMediaFromContent(d.content || '');
-          const parsedPoll = parsePollFromContent(parsedMedia.cleanContent || d.content || '', d.id);
+          let directParentId = d.post_id;
+          let replyContent = d.content || '';
+          const tagIdx = replyContent.indexOf('[reply_to:');
+          if (tagIdx !== -1) {
+            const endIdx = replyContent.indexOf(']', tagIdx);
+            if (endIdx !== -1) {
+              directParentId = replyContent.slice(tagIdx + 10, endIdx);
+              replyContent = (replyContent.slice(0, tagIdx) + replyContent.slice(endIdx + 1)).trim();
+            }
+          }
+
+          const parsedMedia = parseMediaFromContent(replyContent);
+          const parsedPoll = parsePollFromContent(parsedMedia.cleanContent || replyContent, d.id);
           if (parsedPoll.poll) {
             this.savePoll(parsedPoll.poll);
           }
@@ -1218,13 +1306,32 @@ export class BanterService {
           const mType = parsedMedia.mediaType;
           const hasPoll = Boolean(parsedPoll.poll);
           const pType: BanterPostType = hasPoll ? 'poll' : (mType === 'VIDEO' ? 'video' : (mUrls.length > 0 ? 'image' : 'text'));
+
+          const parentAuthor = (directParentId === effectivePostId)
+            ? (activePost?.authorHandle || 'Fanatic')
+            : (allComments.find((x: any) => x.id === directParentId)?.author_handle || activePost?.authorHandle || 'Fanatic');
+
+          const dynamic = calculateDynamicMetrics({
+            id: d.id,
+            created_at: d.created_at,
+            createdAt: d.created_at,
+            impressions_count: d.impressions_count ?? d.impressions ?? 0,
+            views_count: d.views_count ?? d.views ?? 0,
+            repost_count: d.repost_count ?? d.reposts_count ?? 0,
+            reaction_fire_count: d.reaction_fire_count || d.likes_count || 0,
+            comment_count: 0,
+            parent_id: directParentId,
+            is_trending: false
+          });
+
           return {
             id: d.id,
             type: pType,
             types: [pType],
-            parentId: d.post_id,
+            parentId: directParentId,
             rootId: effectivePostId,
-            depth: d.post_id === effectivePostId ? 1 : 2,
+            depth: directParentId === effectivePostId ? 1 : 2,
+            replyingToHandle: parentAuthor,
             userId: d.device_id,
             authorDeviceId: d.device_id,
             author_device_id: d.device_id,
@@ -1232,7 +1339,7 @@ export class BanterService {
             authorName: (d.author_handle || 'Fanatic').split(' #')[0],
             authorType: aType,
             authorBadge: aBadge,
-            content: parsedPoll.cleanContent || parsedMedia.cleanContent || d.content,
+            content: parsedPoll.cleanContent || parsedMedia.cleanContent || replyContent,
             mediaUrls: mUrls,
             mediaType: mType,
             imageUrl: mUrls[0] || undefined,
@@ -1245,11 +1352,12 @@ export class BanterService {
             reactionSkullCount: 0,
             commentCount: 0,
             repliesCount: 0,
-            repostCount: d.repost_count ?? d.reposts_count ?? 0,
-            repostsCount: d.repost_count ?? d.reposts_count ?? 0,
-            impressionsCount: d.impressions_count ?? d.impressions ?? 0,
-            impressions: d.impressions_count ?? d.impressions ?? 0,
-            viewsCount: d.views_count ?? d.views ?? 0,
+            repostCount: dynamic.reposts,
+            repostsCount: dynamic.reposts,
+            impressionsCount: dynamic.impressions,
+            impressions: dynamic.impressions,
+            viewsCount: dynamic.views,
+            isTrending: false,
             createdAt: d.created_at,
             userReactions: userReactions[d.id] || {}
           };
@@ -1265,6 +1373,30 @@ export class BanterService {
             existingIds.add(r.id);
             replies.push(r);
           }
+        }
+
+        // Reconcile dynamic metrics for active root post
+        if (activePost) {
+          const dynamicRoot = calculateDynamicMetrics({
+            id: activePost.id,
+            created_at: activePost.createdAt,
+            createdAt: activePost.createdAt,
+            impressions_count: activePost.impressionsCount,
+            views_count: activePost.viewsCount,
+            repost_count: activePost.repostCount,
+            reaction_fire_count: activePost.reactionFireCount,
+            reaction_clown_count: activePost.reactionClownCount,
+            reaction_skull_count: activePost.reactionSkullCount,
+            comment_count: replies.length,
+            parent_id: null,
+            is_trending: activePost.isTrending
+          });
+          activePost.impressionsCount = dynamicRoot.impressions;
+          activePost.impressions = dynamicRoot.impressions;
+          activePost.viewsCount = dynamicRoot.views;
+          activePost.repostCount = dynamicRoot.reposts;
+          activePost.repostsCount = dynamicRoot.reposts;
+          activePost.commentCount = replies.length;
         }
       } catch {
         // offline safe
@@ -1383,6 +1515,7 @@ export class BanterService {
     const identity = anonymousIdentityService.getIdentity();
     const deviceIdentity = getOrCreateDeviceIdentity();
     const effectiveDeviceId = opts.authorDeviceId || sessionProfile?.deviceId || deviceIdentity.deviceId || identity.deviceId;
+    const effectiveDeviceUuid = (effectiveDeviceId && /^[0-9a-f-]{36}$/i.test(effectiveDeviceId)) ? effectiveDeviceId : null;
     const effectiveAuthorName = sanitizePostText(opts.authorName || sessionProfile?.authorName || identity.publicHandle.split(' #')[0] || 'Fanatic').slice(0, 80);
     const effectiveAuthorHandle = sanitizePostText(opts.authorHandle || sessionProfile?.authorHandle || identity.publicHandle).slice(0, 80);
     const effectiveAuthorAvatar = opts.authorAvatar || sessionProfile?.avatarColor;
@@ -1491,11 +1624,14 @@ export class BanterService {
           body: JSON.stringify({
             id: postId,
             parentId: opts.parentId,
+            rootId: opts.rootId || opts.parentId,
             replyingToHandle: opts.replyingToHandle,
             content: formattedContent,
             authorHandle: effectiveAuthorHandle,
             authorType: dbAuthorType,
             authorBadge: dbBadge,
+            authorDeviceId: effectiveDeviceId,
+            deviceId: effectiveDeviceId,
             mediaUrls,
             mediaType: finalMediaType,
             poll: opts.poll
@@ -1509,11 +1645,17 @@ export class BanterService {
 
       // 2. Direct authorized database write
       if (!savedDbRow && supabaseBanterAdmin) {
+        const targetPostId = opts.rootId || opts.parentId;
+        let contentToWrite = formattedContent || (pollObj ? pollObj.question : 'Reply take');
+        if (opts.rootId && opts.rootId !== opts.parentId && !contentToWrite.includes('[reply_to:')) {
+          contentToWrite = `${contentToWrite} [reply_to:${opts.parentId}]`.trim();
+        }
+
         const commentPayload: any = {
-          post_id: opts.parentId,
+          post_id: targetPostId,
           author_handle: effectiveAuthorHandle,
           author_type: dbAuthorType,
-          content: formattedContent || (pollObj ? pollObj.question : 'Reply take'),
+          content: contentToWrite,
           status: 'active'
         };
         if (postId) commentPayload.id = postId;
@@ -1529,18 +1671,19 @@ export class BanterService {
         }
         savedDbRow = data;
 
-        // Increment parent post comment count in DB
+        // Increment root / parent post comment count in DB
         try {
+          const targetPostId = opts.rootId || opts.parentId;
           const { data: p } = await supabaseBanterAdmin
             .from('banter_posts')
             .select('comment_count')
-            .eq('id', opts.parentId)
+            .eq('id', targetPostId)
             .single();
           if (p) {
             await supabaseBanterAdmin
               .from('banter_posts')
               .update({ comment_count: (p.comment_count || 0) + 1 })
-              .eq('id', opts.parentId);
+              .eq('id', targetPostId);
           }
         } catch {}
       }
@@ -1558,7 +1701,7 @@ export class BanterService {
         pollId: pollObj?.id || undefined,
         parentId: opts.parentId,
         rootId: opts.rootId || opts.parentId,
-        depth: 1,
+        depth: opts.depth || (opts.parentId === opts.rootId ? 1 : 2),
         replyingToHandle: opts.replyingToHandle || null,
         userId: effectiveDeviceId,
         authorDeviceId: effectiveDeviceId,
@@ -1589,6 +1732,7 @@ export class BanterService {
         impressionsCount: 0,
         impressions: 0,
         viewsCount: 0,
+        isTrending: false,
         isMine: true,
         createdAt: savedDbRow.created_at || new Date().toISOString(),
         userReactions: {}
@@ -1611,6 +1755,8 @@ export class BanterService {
           authorHandle: effectiveAuthorHandle,
           authorType: dbAuthorType,
           authorBadge: dbBadge,
+          authorDeviceId: effectiveDeviceId,
+          deviceId: effectiveDeviceId,
           matchId: opts.matchId || null,
           leagueId: '11111111-1111-1111-1111-111111111111',
           mediaUrls,
@@ -1707,6 +1853,7 @@ export class BanterService {
       impressionsCount: savedDbRow.impressions_count ?? 0,
       impressions: savedDbRow.impressions ?? savedDbRow.impressions_count ?? 0,
       viewsCount: savedDbRow.views_count ?? savedDbRow.views ?? 0,
+      isTrending: false,
       isMine: true,
       createdAt: savedDbRow.created_at || new Date().toISOString(),
       userReactions: {}
@@ -2009,7 +2156,14 @@ export class BanterService {
         match_id: post.matchId || null,
         league_id: post.leagueId || null,
         source_type: post.sourceType || 'user',
-        status: 'active'
+        status: 'active',
+        impressions_count: 0,
+        views_count: 0,
+        repost_count: 0,
+        reaction_fire_count: 0,
+        reaction_clown_count: 0,
+        reaction_skull_count: 0,
+        comment_count: 0
       };
 
       if (/^[0-9a-f-]{36}$/i.test(post.id)) {
@@ -2087,10 +2241,14 @@ export class BanterService {
           body: JSON.stringify({
             id: reply.id,
             parentId: reply.parentId,
+            rootId: reply.rootId || reply.parentId,
+            replyingToHandle: reply.replyingToHandle,
             content: formattedContent,
             authorHandle: reply.authorHandle,
             authorType: reply.authorType || 'user',
             authorBadge: reply.authorBadge,
+            authorDeviceId: reply.authorDeviceId || reply.userId,
+            deviceId: reply.authorDeviceId || reply.userId,
             mediaUrls: reply.mediaUrls,
             mediaType: reply.mediaType
           })
@@ -2306,6 +2464,24 @@ export class BanterService {
     const postTypes: BanterPostType[] = [postType];
     if (postType !== 'text' && cleanContent && cleanContent.length > 0) postTypes.push('text');
 
+    const dynamicMetrics = calculateDynamicMetrics({
+      id: d.id,
+      created_at: d.created_at,
+      createdAt: d.created_at,
+      impressions_count: d.impressions_count,
+      impressionsCount: d.impressions,
+      repost_count: d.repost_count,
+      repostCount: d.reposts_count,
+      views_count: d.views_count,
+      viewsCount: d.views,
+      reaction_fire_count: d.reaction_fire_count ?? d.likes_count,
+      reactionClownCount: d.reaction_clown_count,
+      reactionSkullCount: d.reaction_skull_count,
+      comment_count: d.comment_count ?? d.replies_count,
+      parent_id: d.parent_id,
+      is_trending: Boolean(d.is_trending)
+    });
+
     return {
       id: d.id,
       type: postType,
@@ -2329,16 +2505,16 @@ export class BanterService {
       sourceType: d.source_type || 'user',
       likesCount: d.likes_count ?? d.reaction_fire_count ?? 0,
       repliesCount: d.comment_count ?? d.replies_count ?? 0,
-      repostsCount: d.repost_count ?? d.reposts_count ?? 0,
+      repostsCount: dynamicMetrics.reposts,
       reactionFireCount: d.reaction_fire_count ?? d.likes_count ?? 0,
       reactionClownCount: d.reaction_clown_count ?? 0,
       reactionSkullCount: d.reaction_skull_count ?? 0,
       commentCount: d.comment_count ?? d.replies_count ?? 0,
-      repostCount: d.repost_count ?? d.reposts_count ?? 0,
-      isTrending: Boolean(d.is_trending),
-      impressions: d.impressions_count ?? d.impressions ?? 0,
-      impressionsCount: d.impressions_count ?? d.impressions ?? 0,
-      viewsCount: d.views_count ?? d.views ?? (d.impressions_count ? Math.floor(d.impressions_count * 0.42) : 0),
+      repostCount: dynamicMetrics.reposts,
+      isTrending: dynamicMetrics.isTrending,
+      impressions: dynamicMetrics.impressions,
+      impressionsCount: dynamicMetrics.impressions,
+      viewsCount: dynamicMetrics.views,
       bookmarksCount: d.bookmarks_count ?? 0,
       pollId: poll ? poll.id : (d.poll_id || undefined),
       poll: poll || undefined,
