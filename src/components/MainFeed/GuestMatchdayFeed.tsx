@@ -144,15 +144,18 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
   const formattedDateStr = localDateKey(activeDate instanceof Date ? activeDate : new Date(activeDate));
 
   useEffect(() => {
-    if (dateAlignedRef.current || playdays.length === 0) return;
-    if (playdays.some((mark) => mark.date === formattedDateStr && !mark.isPlayed)) {
+    if (playdays.length === 0) return;
+    const curMark = playdays.find((mark) => mark.date === formattedDateStr);
+    if (curMark && !curMark.isPlayed) {
       dateAlignedRef.current = true;
       return;
     }
-    const targetKey = playdays.find((mark) => mark.isLeague && !mark.isPlayed && mark.date >= formattedDateStr)?.date || playdays.find((mark) => mark.isLeague && !mark.isPlayed)?.date || playdays.find((mark) => mark.date >= formattedDateStr)?.date
-      || playdays[playdays.length - 1].date;
-    dateAlignedRef.current = true;
-    if (targetKey !== formattedDateStr) setGuestMatchday(dateFromKey(targetKey));
+    if (!dateAlignedRef.current || (curMark && curMark.isPlayed)) {
+      const targetKey = playdays.find((mark) => mark.isLeague && !mark.isPlayed && mark.date >= formattedDateStr)?.date || playdays.find((mark) => mark.isLeague && !mark.isPlayed)?.date || playdays.find((mark) => mark.date >= formattedDateStr)?.date
+        || playdays[playdays.length - 1].date;
+      dateAlignedRef.current = true;
+      if (targetKey && targetKey !== formattedDateStr) setGuestMatchday(dateFromKey(targetKey));
+    }
   }, [playdays, formattedDateStr]);
 
   const fixturePlaydaysMap = useMemo(() => {

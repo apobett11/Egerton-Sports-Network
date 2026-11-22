@@ -2,7 +2,7 @@ import type { Match } from '../types';
 import { guestCache } from './guestCache';
 import { supabase } from './supabase';
 
-export const PLAYDAY_INDEX_KEY = 'playday_index_v7';
+export const PLAYDAY_INDEX_KEY = 'playday_index_v8';
 const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
 const FRIENDLY_COMP_ID = '33333333-3333-3333-3333-333333333333';
 
@@ -76,7 +76,7 @@ export function getNextUnplayedMatchday(fixtures?: Array<{
     const unplayedFromIndex = index.find((m) => m.isLeague && !m.isPlayed && m.matchday > 0);
     if (unplayedFromIndex) return unplayedFromIndex.matchday;
     const latestLeague = index.find((m) => m.isLeague && m.matchday > 0);
-    return latestLeague?.matchday || 15;
+    return latestLeague?.matchday || 16;
   }
 
   const hasStatusInfo = fixtures.some((f) => f.status !== undefined && f.status !== null);
@@ -84,7 +84,7 @@ export function getNextUnplayedMatchday(fixtures?: Array<{
     const unplayedFromIndex = index.find((m) => m.isLeague && !m.isPlayed && m.matchday > 0);
     if (unplayedFromIndex) return unplayedFromIndex.matchday;
     const latestLeague = index.find((m) => m.isLeague && m.matchday > 0);
-    return latestLeague?.matchday || 15;
+    return latestLeague?.matchday || 16;
   }
 
   const matchdayMap = new Map<number, { total: number; played: number }>();
@@ -112,7 +112,10 @@ export function getNextUnplayedMatchday(fixtures?: Array<{
     }
   }
 
-  return sortedMds.length > 0 ? sortedMds[sortedMds.length - 1] : 15;
+  const unplayedFromIndex = index.find((m) => m.isLeague && !m.isPlayed && m.matchday > 0);
+  if (unplayedFromIndex) return unplayedFromIndex.matchday;
+
+  return sortedMds.length > 0 ? sortedMds[sortedMds.length - 1] : 16;
 }
 
 export function buildPlaydayIndex(rows: Array<{
@@ -174,13 +177,12 @@ export function readPlaydayIndex(): PlaydayMark[] {
 
 let playdayInflight: Promise<PlaydayMark[]> | null = null;
 
-const PLAYDAY_REV_KEY = 'playday_rev_v4';
+const PLAYDAY_REV_KEY = 'playday_rev_v5';
 const PLAYDAY_TTL = 24 * 60 * 60 * 1000;
 
 /**
- * Paint the cached calendar. One newest-timestamp plus a count decides if the
- * dates changed. Score updates move updated_at but not the count, so the
- * calendar is not downloaded again. A count change loads date columns only.
+ * Paint the cached calendar. When newest-timestamp or count changes,
+ * calendar and playday marks are recomputed so match completion shifts immediately.
  */
 export function refreshPlaydayIndex(): Promise<PlaydayMark[]> {
   if (playdayInflight) return playdayInflight;
@@ -196,10 +198,7 @@ export function refreshPlaydayIndex(): Promise<PlaydayMark[]> {
       const count = typeof countRes.count === 'number' ? countRes.count : null;
       const probeOk = !latestRes.error && !countRes.error && !!updatedAt && count !== null;
 
-      if (probeOk && cached.length > 0 && cachedRev && cachedRev.count === count) {
-        if (cachedRev.updatedAt !== updatedAt) {
-          guestCache.set('fixtures', PLAYDAY_REV_KEY, { updatedAt, count }, PLAYDAY_TTL);
-        }
+      if (probeOk && cached.length > 0 && cachedRev && cachedRev.count === count && cachedRev.updatedAt === updatedAt) {
         return cached;
       }
 
@@ -260,13 +259,17 @@ export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
   const index = readPlaydayIndex();
 
   // 1. Look for unplayed matchday in playdays index
-  const mdMark = index.find((m) => m.matchday === unplayedMd && m.isLeague);
+  const mdMark = index.find((m) => m.matchday === unplayedMd && m.isLeague && !m.isPlayed);
   if (mdMark) {
     return dateFromKey(mdMark.date);
   }
-  const anyMdMark = index.find((m) => m.matchday === unplayedMd);
+  const anyMdMark = index.find((m) => m.matchday === unplayedMd && !m.isPlayed);
   if (anyMdMark) {
     return dateFromKey(anyMdMark.date);
+  }
+  const anyMd = index.find((m) => m.matchday === unplayedMd);
+  if (anyMd) {
+    return dateFromKey(anyMd.date);
   }
 
   // 2. Look for fixture in provided/cached fixtures matching unplayedMd
@@ -285,8 +288,8 @@ export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
     return dateFromKey(firstUnplayedMark.date);
   }
 
-  // 4. Default active date for Matchday 15 (Saturday)
-  return dateFromKey('2026-10-24');
+  // 4. Default active date for Matchday 16 (Sunday)
+  return dateFromKey('2026-10-25');
 }
 
 /**

@@ -27,7 +27,7 @@ import { OfflineBanner } from './components/common/OfflineBanner';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
-import { resolveGuestMatchdayDate, readPlaydayIndex, localDateKey, fixtureDateKey } from './lib/matchdayHelper';
+import { resolveGuestMatchdayDate, readPlaydayIndex, refreshPlaydayIndex, localDateKey, fixtureDateKey } from './lib/matchdayHelper';
 import { getGuestMatchday, setGuestMatchday } from './lib/guestMatchday';
 import { useLiveMatchRealtime } from './hooks/useLiveMatchRealtime';
 import { ToastContainer } from './components/common/ToastContainer';
@@ -441,10 +441,7 @@ export const AppContent: React.FC = () => {
         if (!isNaN(d.getTime())) {
           const key = localDateKey(d);
           const index = readPlaydayIndex();
-          if (index.length === 0) {
-            const dayOfWeek = d.getDay();
-            if (dayOfWeek === 0 || dayOfWeek === 6) return d;
-          } else if (index.some((mark) => mark.date === key && !mark.isPlayed)) {
+          if (index.length > 0 && index.some((mark) => mark.date === key && !mark.isPlayed)) {
             return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
           }
         }
@@ -900,21 +897,29 @@ export const AppContent: React.FC = () => {
   // Auto-sync guest fixtures to next matchday strictly once on initial mount if on a weekday or on a played date
   const hasInitialDateSyncedRef = useRef(false);
   useEffect(() => {
+    refreshPlaydayIndex().then((index) => {
+      if (index && index.length > 0) {
+        const curKey = localDateKey(selectedDate);
+        const curMark = index.find((mark) => mark.date === curKey);
+        if (!curMark || curMark.isPlayed) {
+          hasInitialDateSyncedRef.current = true;
+          const targetDate = resolveGuestMatchdayDate();
+          if (localDateKey(targetDate) !== curKey) {
+            setGuestMatchday(targetDate);
+            setSelectedDate(targetDate);
+          }
+        }
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     if (hasInitialDateSyncedRef.current) return;
     const curKey = localDateKey(selectedDate);
     const index = readPlaydayIndex();
     const curMark = index.find((mark) => mark.date === curKey);
     if (curMark && !curMark.isPlayed) {
       hasInitialDateSyncedRef.current = true;
-      return;
-    }
-    if (liveMatches && liveMatches.length > 0) {
-      hasInitialDateSyncedRef.current = true;
-      const targetDate = resolveGuestMatchdayDate(liveMatches);
-      if (localDateKey(targetDate) !== curKey) {
-        setGuestMatchday(targetDate);
-        setSelectedDate(targetDate);
-      }
       return;
     }
     if (index.length > 0) {
@@ -925,7 +930,7 @@ export const AppContent: React.FC = () => {
         setSelectedDate(targetDate);
       }
     }
-  }, [liveMatches, selectedDate]);
+  }, [selectedDate]);
 
   // Auto-reset completed matchday favorites when a matchday finishes, keeping future matchdays intact
   useEffect(() => {
