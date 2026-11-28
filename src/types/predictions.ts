@@ -119,6 +119,7 @@ export interface BanterPost {
     matchday?: number;
   };
   sourceType: 'user' | 'journalist' | 'seed' | 'admin';
+  isPinned?: boolean;
   likesCount?: number;
   repliesCount?: number;
   repostsCount?: number;

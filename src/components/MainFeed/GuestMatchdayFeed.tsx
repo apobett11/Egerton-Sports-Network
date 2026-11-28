@@ -145,16 +145,22 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
 
   useEffect(() => {
     if (playdays.length === 0) return;
+    if (dateAlignedRef.current) return;
+
     const curMark = playdays.find((mark) => mark.date === formattedDateStr);
     if (curMark && !curMark.isPlayed) {
       dateAlignedRef.current = true;
       return;
     }
-    if (!dateAlignedRef.current || (curMark && curMark.isPlayed)) {
-      const targetKey = playdays.find((mark) => mark.isLeague && !mark.isPlayed && mark.date >= formattedDateStr)?.date || playdays.find((mark) => mark.isLeague && !mark.isPlayed)?.date || playdays.find((mark) => mark.date >= formattedDateStr)?.date
-        || playdays[playdays.length - 1].date;
-      dateAlignedRef.current = true;
-      if (targetKey && targetKey !== formattedDateStr) setGuestMatchday(dateFromKey(targetKey));
+
+    const targetKey =
+      playdays.find((mark) => mark.isLeague && !mark.isPlayed)?.date ||
+      playdays.find((mark) => !mark.isPlayed)?.date ||
+      playdays[playdays.length - 1]?.date;
+
+    dateAlignedRef.current = true;
+    if (targetKey && targetKey !== formattedDateStr) {
+      setGuestMatchday(dateFromKey(targetKey));
     }
   }, [playdays, formattedDateStr]);
 
@@ -164,8 +170,13 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
     return map;
   }, [playdays]);
 
-  const canGoPrev = Boolean(shiftPlayday(formattedDateStr, -1, playdays));
-  const canGoNext = Boolean(shiftPlayday(formattedDateStr, 1, playdays));
+  const effectivePlaydays = useMemo(() => {
+    if (playdays && playdays.length > 0) return playdays;
+    return readPlaydayIndex();
+  }, [playdays]);
+
+  const canGoPrev = Boolean(shiftPlayday(formattedDateStr, -1, effectivePlaydays));
+  const canGoNext = Boolean(shiftPlayday(formattedDateStr, 1, effectivePlaydays));
 
   const requestKey = `${selectedCompetitionId}|${formattedDateStr}`;
   const [fixtureBundle, setFixtureBundle] = useState<{ key: string; data: Match[]; error: string | null } | null>(null);
@@ -381,17 +392,20 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
   const handleShiftPlayday = useCallback((direction: 1 | -1) => {
     dateAlignedRef.current = true;
     const now = Date.now();
-    if (now - lastSwitchTimeRef.current < 220) return;
-    const nextKey = shiftPlayday(formattedDateStr, direction, playdays);
+    if (now - lastSwitchTimeRef.current < 60) return;
+    const nextKey = shiftPlayday(formattedDateStr, direction, effectivePlaydays);
     if (!nextKey) return;
     lastSwitchTimeRef.current = now;
     const remembered = recallDay(selectedCompetitionId, nextKey);
-    if (remembered) {
+    if (remembered && remembered.length > 0) {
       setFixtureBundle({ key: `${selectedCompetitionId}|${nextKey}`, data: remembered, error: null });
       setFixturesLoading(false);
+    } else {
+      setFixtureBundle(null);
+      setFixturesLoading(true);
     }
     setGuestMatchday(dateFromKey(nextKey));
-  }, [formattedDateStr, playdays, selectedCompetitionId]);
+  }, [formattedDateStr, effectivePlaydays, selectedCompetitionId]);
 
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);

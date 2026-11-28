@@ -28,7 +28,7 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
 import { resolveGuestMatchdayDate, readPlaydayIndex, refreshPlaydayIndex, localDateKey, fixtureDateKey } from './lib/matchdayHelper';
-import { getGuestMatchday, setGuestMatchday } from './lib/guestMatchday';
+import { getGuestMatchday, setGuestMatchday, subscribeGuestMatchday } from './lib/guestMatchday';
 import { useLiveMatchRealtime } from './hooks/useLiveMatchRealtime';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useDeviceIdentity } from './hooks/useDeviceIdentity';
@@ -931,6 +931,16 @@ export const AppContent: React.FC = () => {
       }
     }
   }, [selectedDate]);
+
+  useEffect(() => {
+    return subscribeGuestMatchday(() => {
+      const gDate = getGuestMatchday();
+      setSelectedDate((prev) => {
+        if (localDateKey(prev) === localDateKey(gDate)) return prev;
+        return gDate;
+      });
+    });
+  }, []);
 
   // Auto-reset completed matchday favorites when a matchday finishes, keeping future matchdays intact
   useEffect(() => {

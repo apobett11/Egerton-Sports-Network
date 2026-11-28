@@ -76,7 +76,7 @@ export function getNextUnplayedMatchday(fixtures?: Array<{
     const unplayedFromIndex = index.find((m) => m.isLeague && !m.isPlayed && m.matchday > 0);
     if (unplayedFromIndex) return unplayedFromIndex.matchday;
     const latestLeague = index.find((m) => m.isLeague && m.matchday > 0);
-    return latestLeague?.matchday || 16;
+    return latestLeague?.matchday || 17;
   }
 
   const hasStatusInfo = fixtures.some((f) => f.status !== undefined && f.status !== null);
@@ -84,7 +84,7 @@ export function getNextUnplayedMatchday(fixtures?: Array<{
     const unplayedFromIndex = index.find((m) => m.isLeague && !m.isPlayed && m.matchday > 0);
     if (unplayedFromIndex) return unplayedFromIndex.matchday;
     const latestLeague = index.find((m) => m.isLeague && m.matchday > 0);
-    return latestLeague?.matchday || 16;
+    return latestLeague?.matchday || 17;
   }
 
   const matchdayMap = new Map<number, { total: number; played: number }>();
@@ -115,7 +115,7 @@ export function getNextUnplayedMatchday(fixtures?: Array<{
   const unplayedFromIndex = index.find((m) => m.isLeague && !m.isPlayed && m.matchday > 0);
   if (unplayedFromIndex) return unplayedFromIndex.matchday;
 
-  return sortedMds.length > 0 ? sortedMds[sortedMds.length - 1] : 16;
+  return sortedMds.length > 0 ? sortedMds[sortedMds.length - 1] : 17;
 }
 
 export function buildPlaydayIndex(rows: Array<{
@@ -171,8 +171,36 @@ export function buildPlaydayIndex(rows: Array<{
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+export const DEFAULT_PLAYDAYS: PlaydayMark[] = [
+  { date: '2026-09-05', matchday: 1, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-09-06', matchday: 2, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-09-12', matchday: 3, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-09-13', matchday: 4, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-09-19', matchday: 5, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-09-20', matchday: 6, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 6, playedMatches: 6 },
+  { date: '2026-09-26', matchday: 7, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 9, playedMatches: 9 },
+  { date: '2026-09-27', matchday: 8, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 9, playedMatches: 9 },
+  { date: '2026-10-03', matchday: 9, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-10-04', matchday: 10, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-10-10', matchday: 11, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-10-11', matchday: 12, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-10-17', matchday: 13, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-10-18', matchday: 14, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 10 },
+  { date: '2026-10-24', matchday: 15, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
+  { date: '2026-10-25', matchday: 16, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 9 },
+  { date: '2026-10-31', matchday: 17, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-11-01', matchday: 18, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-11-07', matchday: 19, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-11-08', matchday: 20, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-11-14', matchday: 21, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 6, playedMatches: 0 },
+  { date: '2026-11-15', matchday: 22, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 6, playedMatches: 0 },
+  { date: '2026-11-29', matchday: 23, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+];
+
 export function readPlaydayIndex(): PlaydayMark[] {
-  return guestCache.getStale<PlaydayMark[]>('fixtures', PLAYDAY_INDEX_KEY) || [];
+  const cached = guestCache.getStale<PlaydayMark[]>('fixtures', PLAYDAY_INDEX_KEY);
+  if (cached && cached.length >= DEFAULT_PLAYDAYS.length) return cached;
+  return DEFAULT_PLAYDAYS;
 }
 
 let playdayInflight: Promise<PlaydayMark[]> | null = null;
@@ -288,8 +316,8 @@ export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
     return dateFromKey(firstUnplayedMark.date);
   }
 
-  // 4. Default active date for Matchday 16 (Sunday)
-  return dateFromKey('2026-10-25');
+  // 4. Default active date for Matchday 17 (Saturday)
+  return dateFromKey('2026-10-31');
 }
 
 /**
