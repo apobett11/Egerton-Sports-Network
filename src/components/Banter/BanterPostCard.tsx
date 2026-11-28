@@ -1,17 +1,17 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   MessageCircle,
-  Repeat2,
   BarChart2,
-  Share,
   Bookmark,
+  Heart,
   Film,
   Shield,
   Flame,
-  AlertCircle
+  AlertCircle,
+  MoreHorizontal,
+  Pin
 } from 'lucide-react';
 import { formatRelativeTime, formatTeamTag, getCleanMessageRef, MENTION_AND_TAG_REGEX } from '../../lib/predictions/utils';
-import { shareBanterSnapshot } from '../../lib/shareSnapshot';
 import { BanterReplyModal } from './BanterReplyModal';
 import { XPollWidget } from '../Predictions/Banter/XPollWidget';
 import { getActiveSessionProfile, getOrCreatePermanentDeviceId } from '../../utils/sessionIdentity';
@@ -24,6 +24,7 @@ import {
 } from '../../lib/predictions/footballAvatars';
 import { ImageLightboxModal } from '../common/ImageLightboxModal';
 import { banterService, parsePollFromContent, parseMediaFromContent } from '../../services/predictions/banterService';
+import { supabase } from '../../lib/supabase';
 import type { BanterPost, ReactionType } from '../../types/predictions';
 
 interface BanterPostCardProps {
@@ -33,6 +34,8 @@ interface BanterPostCardProps {
   onOpenComments: (post: BanterPost) => void;
   onSelectMatchContext?: (matchId: string) => void;
   onRepost?: (postId: string, active: boolean) => void;
+  onNavigateTeamProfile?: (team: string) => void;
+  onPinChange?: () => void;
 }
 
 function formatTwitterMetric(num: number): string {
@@ -50,6 +53,8 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   onOpenComments,
   onSelectMatchContext,
   onRepost,
+  onNavigateTeamProfile,
+  onPinChange,
 }) => {
   const session = getActiveSessionProfile();
   const currentDeviceId = session?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : null);
@@ -60,35 +65,64 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
   const authorMeta = getAuthorIdentityMeta(post);
 
-  const isJournalist = authorMeta.isJournalist;
-
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState<boolean>(
+    Boolean((post as any).isBookmarked || (post as any).is_bookmarked)
+  );
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
 
-  // Pure Database-Driven Metrics: all calculated deterministically by PostgreSQL (banter_posts_enriched)
-  const impressions = post.impressionsCount ?? post.impressions ?? 0;
-  const dbRepostCount = post.repostCount ?? post.repostsCount ?? 0;
-  const [repostCount, setRepostCount] = useState<number>(dbRepostCount);
-  const [hasReposted, setHasReposted] = useState(false);
-
-  // Sync repost count from server state if not manually toggled by user
-  useEffect(() => {
-    if (!hasReposted) {
-      setRepostCount(post.repostCount ?? post.repostsCount ?? 0);
-    }
-  }, [hasReposted, post.repostCount, post.repostsCount]);
+  // Pure Database-Driven Metrics: all strictly defaulting to 0, zero client seeds
+  const impressions = post.impressionsCount ?? post.impressions ?? (post as any).views_count ?? 0;
 
   const [replyCount, setReplyCount] = useState(post.commentCount ?? post.repliesCount ?? 0);
   useEffect(() => {
     setReplyCount(post.commentCount ?? post.repliesCount ?? 0);
   }, [post.commentCount, post.repliesCount]);
 
+  const initialLikes = post.likesCount ?? post.reactionFireCount ?? (post as any).likes ?? 0;
+  const [likesCount, setLikesCount] = useState<number>(initialLikes);
+  const initialLiked = Boolean(post.isLiked || post.userReactions?.fire);
+  const [isLiked, setIsLiked] = useState<boolean>(initialLiked);
+
+  useEffect(() => {
+    setLikesCount(post.likesCount ?? post.reactionFireCount ?? (post as any).likes ?? 0);
+    setIsLiked(Boolean(post.isLiked || post.userReactions?.fire));
+  }, [post.likesCount, post.reactionFireCount, post.isLiked, post.userReactions]);
+
+  // Pinned state & 3-dots dropdown options
+  const initialPinned = Boolean(post.isPinned || (post as any).is_pinned);
+  const [isPinned, setIsPinned] = useState(initialPinned);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showPinInput, setShowPinInput] = useState(false);
+  const [pinInputValue, setPinInputValue] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isPinSubmitting, setIsPinSubmitting] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setIsPinned(Boolean(post.isPinned || (post as any).is_pinned));
+  }, [post.isPinned, (post as any).is_pinned]);
+
+  // Close menu on click outside
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+        setShowPinInput(false);
+        setPinInputValue('');
+        setPinError(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen]);
+
   const [expanded, setExpanded] = useState(false);
 
   const cleanHandle = post.authorHandle.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
   const handlePostClick = (e?: React.MouseEvent) => {
-    if (lightboxImageUrl !== null) return;
+    if (lightboxImageUrl !== null || isMenuOpen) return;
     if (e) {
       const target = e.target as HTMLElement | null;
       if (
@@ -98,6 +132,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         target.tagName === 'VIDEO' ||
         target.tagName === 'BUTTON' ||
         target.tagName === 'A' ||
+        target.tagName === 'INPUT' ||
         target.closest('button') ||
         target.closest('a') ||
         target.closest('input') ||
@@ -114,7 +149,9 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         target.closest('[data-testid="poll-widget"]') ||
         target.closest('[data-testid="poll-inline-reply-container"]') ||
         target.closest('[data-action-buttons]') ||
-        target.closest('[data-testid="action-buttons-bar"]')
+        target.closest('[data-testid="action-buttons-bar"]') ||
+        target.closest('[data-testid="post-options-dropdown"]') ||
+        target.closest('[data-testid="see-team-profile-btn"]')
       ) {
         return;
       }
@@ -132,22 +169,128 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     if (onOpenComments) onOpenComments(post);
   };
 
-  const handleRepost = (e: React.MouseEvent) => {
+  const handleToggleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const next = !hasReposted;
-    // Instant UI update (+1 optimistically on top of database count)
-    setRepostCount((prev: number) => Math.max(0, prev + (next ? 1 : -1)));
-    setHasReposted(next);
-    banterService.toggleRepost(post.id, next).catch(console.warn);
-    // Background asynchronous promise
-    if (onRepost) {
-      Promise.resolve().then(() => onRepost(post.id, next)).catch(console.warn);
+    const next = !isLiked;
+    setIsLiked(next);
+    setLikesCount((prev) => Math.max(0, prev + (next ? 1 : -1)));
+    if (onToggleReaction) {
+      onToggleReaction(post.id, 'fire');
+    } else {
+      banterService.toggleReaction(post.id, 'fire').catch(console.warn);
     }
   };
 
-  const handleShareTake = (e: React.MouseEvent) => {
+  const handleToggleBookmark = (e: React.MouseEvent) => {
     e.stopPropagation();
-    shareBanterSnapshot(post, null);
+    const next = !isBookmarked;
+    setIsBookmarked(next);
+    banterService.toggleBookmark(post.id, next).catch(console.warn);
+  };
+
+  const handlePinSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = pinInputValue.trim();
+    if (trimmed !== '1574') {
+      setPinError('Invalid PIN code.');
+      return;
+    }
+
+    setIsPinSubmitting(true);
+    setPinError(null);
+
+    try {
+      if (!isPinned) {
+        // Enforce max 2 pinned limitation
+        let currentlyPinnedCount = 0;
+        try {
+          const { data, error } = await supabase
+            .from('banter_posts')
+            .select('id')
+            .eq('is_pinned', true);
+          if (!error && data) {
+            currentlyPinnedCount = data.length;
+          }
+        } catch (err) {
+          console.warn('Check pinned count error:', err);
+        }
+
+        if (currentlyPinnedCount >= 2) {
+          setPinError('Only 2 messages can be pinned at a time. One must be unpinned to pin another.');
+          setIsPinSubmitting(false);
+          return;
+        }
+
+        if (typeof (banterService as any).pinBanterPost === 'function') {
+          await (banterService as any).pinBanterPost(post.id, trimmed);
+        } else {
+          const { error } = await supabase.rpc('pin_banter_post', {
+            p_post_id: post.id,
+            p_pin: trimmed,
+          });
+          if (error) throw error;
+        }
+
+        setIsPinned(true);
+        post.isPinned = true;
+        (post as any).is_pinned = true;
+      } else {
+        if (typeof (banterService as any).unpinBanterPost === 'function') {
+          await (banterService as any).unpinBanterPost(post.id, trimmed);
+        } else {
+          const { error } = await supabase.rpc('unpin_banter_post', {
+            p_post_id: post.id,
+            p_pin: trimmed,
+          });
+          if (error) throw error;
+        }
+
+        setIsPinned(false);
+        post.isPinned = false;
+        (post as any).is_pinned = false;
+      }
+
+      setIsMenuOpen(false);
+      setShowPinInput(false);
+      setPinInputValue('');
+      if (onPinChange) onPinChange();
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('unpinned') || msg.includes('2') || msg.includes('limit') || msg.includes('pinned')) {
+        setPinError('Only 2 messages can be pinned at a time. One must be unpinned to pin another.');
+      } else if (msg.includes('PIN') || msg.includes('pin')) {
+        setPinError('Invalid PIN code.');
+      } else {
+        setPinError(msg || 'Failed to update pin status.');
+      }
+    } finally {
+      setIsPinSubmitting(false);
+    }
+  };
+
+  const taggedTeam = useMemo(() => {
+    if (post.taggedTeamName) return post.taggedTeamName;
+    if ((post as any).tagged_team) return (post as any).tagged_team;
+    if ((post as any).tagged_team_name) return (post as any).tagged_team_name;
+    if ((post as any).team) return (post as any).team;
+    if (post.content) {
+      const match = post.content.match(/[@#]([a-zA-Z0-9_\s]{3,25})/);
+      if (match) {
+        return match[1].trim();
+      }
+    }
+    return null;
+  }, [post.taggedTeamName, (post as any).tagged_team, (post as any).tagged_team_name, (post as any).team, post.content]);
+
+  const handleNavigateToTeamProfile = (teamIdentifier: string) => {
+    if (onNavigateTeamProfile) {
+      onNavigateTeamProfile(teamIdentifier);
+    } else {
+      try {
+        window.dispatchEvent(new CustomEvent('navigate-team-profile', { detail: { team: teamIdentifier } }));
+      } catch {}
+      window.location.hash = `#/team/${encodeURIComponent(teamIdentifier)}`;
+    }
   };
 
   const renderTweetContent = (text: string) => {
@@ -230,7 +373,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     <article
       data-testid="banter-post-card"
       onClick={handlePostClick}
-      className={`group relative overflow-hidden px-4 py-3.5 sm:px-4 sm:py-4 transition-all duration-300 cursor-pointer hover:bg-white/[0.02] max-w-2xl mx-auto border-b border-zinc-800/70 ${
+      className={`group relative overflow-hidden px-1 py-3 sm:px-1.5 sm:py-3.5 transition-all duration-300 cursor-pointer hover:bg-white/[0.02] max-w-2xl mx-auto border-b border-zinc-800/70 ${
         isHot || post.isTrending ? 'bg-amber-500/[0.02]' : ''
       } ${post.isPending ? 'opacity-70 filter brightness-85 blur-[0.4px] select-none pointer-events-none' : ''}`}
     >
@@ -238,6 +381,14 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
       {post.isPending && (
         <div className="banter-range-strip">
           <div className="banter-range-strip-bar" />
+        </div>
+      )}
+
+      {/* Pinned Message Indicator */}
+      {isPinned && (
+        <div className="flex items-center gap-1.5 text-xs text-amber-400 font-semibold mb-1.5 pl-12" data-testid="pinned-badge">
+          <Pin className="h-3.5 w-3.5 fill-amber-400 rotate-45" />
+          <span>Pinned message</span>
         </div>
       )}
 
@@ -253,8 +404,8 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
       {(isHot || post.isTrending) && !post.isPending && (
         <div className="absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
       )}
-      <div className="flex gap-3">
-        {/* User Avatar / Logo - Made larger matching Google Stitch / X standard */}
+      <div className="flex gap-2.5 sm:gap-3">
+        {/* User Avatar / Logo */}
         <div className="flex-shrink-0">
           <button
             type="button"
@@ -262,7 +413,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               e.stopPropagation();
               setIsAvatarModalOpen(true);
             }}
-            className="group/avatar flex h-12 w-12 items-center justify-center rounded-full overflow-hidden shadow-sm border border-white/10 hover:border-sky-400 transition cursor-pointer"
+            className="group/avatar flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full overflow-hidden shadow-sm border border-white/10 hover:border-sky-400 transition cursor-pointer"
             title="View image and session details"
           >
             <img
@@ -276,16 +427,16 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
         {/* Tweet Body Column */}
         <div className="flex-1 min-w-0">
-          {/* Header: Name, Verified Badge, @Handle · Time */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 flex-wrap leading-tight">
+          {/* Header: Name, Verified Badge, @Handle · Time + 3-dots Menu */}
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1.5 flex-wrap leading-tight min-w-0">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsAvatarModalOpen(true);
                 }}
-                className="font-bold text-white text-[15px] hover:underline hover:text-sky-300 truncate max-w-[170px] cursor-pointer text-left"
+                className="font-bold text-white text-[15px] hover:underline hover:text-sky-300 truncate max-w-[130px] sm:max-w-[170px] cursor-pointer text-left"
                 title="View image and session details"
               >
                 {authorMeta.displayName}
@@ -324,7 +475,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                 )
               ) : null}
 
-              <span className="text-sm text-zinc-500 font-normal truncate max-w-[120px]">
+              <span className="text-sm text-zinc-500 font-normal truncate max-w-[100px] sm:max-w-[120px]">
                 @{cleanHandle}
               </span>
 
@@ -343,6 +494,96 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                   <Flame className="h-3 w-3 text-amber-400 fill-amber-400 animate-pulse" />
                   <span>Trending</span>
                 </span>
+              )}
+            </div>
+
+            {/* 3-Dots Dropdown Options Menu */}
+            <div className="relative shrink-0" ref={menuRef}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMenuOpen((prev) => !prev);
+                  setShowPinInput(false);
+                  setPinInputValue('');
+                  setPinError(null);
+                }}
+                className="p-1 rounded-full text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/80 transition-colors cursor-pointer"
+                title="More options"
+                aria-label="More options"
+                data-testid="post-options-menu-button"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+
+              {isMenuOpen && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute right-0 top-7 z-30 w-56 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl p-1.5 text-xs text-zinc-200 animate-fadeIn"
+                  data-testid="post-options-dropdown"
+                >
+                  {!showPinInput ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPinInput(true);
+                        setPinError(null);
+                        setPinInputValue('');
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-zinc-800 text-left text-zinc-200 hover:text-white transition-colors cursor-pointer"
+                      data-testid="pin-toggle-menu-item"
+                    >
+                      <Pin className="h-3.5 w-3.5 text-amber-400 rotate-45" />
+                      <span>{isPinned ? 'Unpin message' : 'Pin message'}</span>
+                    </button>
+                  ) : (
+                    <div className="p-2 space-y-2">
+                      <div className="text-[11px] text-zinc-400 font-medium">
+                        {isPinned ? 'Enter PIN to unpin' : 'Enter PIN to pin message'}
+                      </div>
+                      <form onSubmit={handlePinSubmit} className="space-y-2">
+                        <input
+                          type="password"
+                          value={pinInputValue}
+                          onChange={(e) => {
+                            setPinInputValue(e.target.value);
+                            setPinError(null);
+                          }}
+                          placeholder="Enter PIN"
+                          autoFocus
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                          data-testid="pin-input-field"
+                        />
+                        {pinError && (
+                          <div className="text-[11px] text-rose-400 leading-tight font-medium" data-testid="pin-error-message">
+                            {pinError}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-end gap-1.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowPinInput(false);
+                              setPinError(null);
+                              setPinInputValue('');
+                            }}
+                            className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isPinSubmitting}
+                            className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] cursor-pointer disabled:opacity-50"
+                            data-testid="pin-submit-button"
+                          >
+                            {isPinSubmitting ? '...' : isPinned ? 'Unpin' : 'Pin'}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -478,6 +719,25 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
             </div>
           )}
 
+          {/* Tagged Team Button */}
+          {taggedTeam && (
+            <div className="mt-2.5 pt-2 border-t border-zinc-800/60 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNavigateToTeamProfile(taggedTeam);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 border border-emerald-500/25 transition-colors text-xs font-semibold cursor-pointer"
+                data-testid="see-team-profile-btn"
+                aria-label={`see ${formatTeamTag(taggedTeam) || taggedTeam} profile`}
+              >
+                <Shield className="h-3.5 w-3.5 text-emerald-400" />
+                <span>see {formatTeamTag(taggedTeam) || taggedTeam} profile</span>
+              </button>
+            </div>
+          )}
+
           {/* Action & Banter Reactions Bar */}
           <div
             data-action-buttons
@@ -485,30 +745,34 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
             onClick={(e) => e.stopPropagation()}
             className="mt-3 flex items-center justify-between text-xs text-zinc-500 max-w-md"
           >
-            {/* 1. Reply - Kept single non-white message bubble */}
+            {/* 1. Comments */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsReplyModalOpen(true);
               }}
-              className="flex items-center gap-1.5 p-1.5 -ml-1.5 rounded-full hover:bg-[#1d9bf0]/10 transition-colors cursor-pointer group/reply text-zinc-400 hover:text-[#1d9bf0]"
-              title="Reply"
+              className="flex items-center gap-1.5 p-1.5 -ml-1 rounded-full hover:bg-sky-500/10 text-zinc-400 hover:text-sky-400 transition-colors cursor-pointer group/reply"
+              title="Reply / Comments"
+              data-testid="post-comments-btn"
             >
-              <span className="font-medium text-xs font-mono">💬 {replyCount}</span>
+              <MessageCircle className="h-4 w-4 group-hover/reply:text-sky-400 transition-colors" />
+              <span className="font-medium text-xs font-mono">{replyCount}</span>
             </button>
 
-            {/* 2. Repost - Organic, directly proportional to impressions */}
+            {/* 2. Likes (adequate space provided) */}
             <button
               type="button"
-              onClick={handleRepost}
-              className={`flex items-center gap-1.5 p-1.5 rounded-full hover:text-[#00ba7c] hover:bg-[#00ba7c]/10 transition-colors cursor-pointer group/repost ${
-                hasReposted ? 'text-[#00ba7c]' : ''
+              onClick={handleToggleLike}
+              className={`flex items-center gap-1.5 p-1.5 px-3 rounded-full hover:bg-rose-500/10 transition-colors cursor-pointer group/like shrink-0 min-w-[3.75rem] ${
+                isLiked ? 'text-rose-500' : 'text-zinc-500 hover:text-rose-500'
               }`}
-              title="Repost"
+              title={isLiked ? 'Unlike' : 'Like'}
+              data-testid="post-like-btn"
+              aria-label="Like"
             >
-              <Repeat2 className="h-4 w-4 group-hover/repost:text-[#00ba7c]" />
-              <span className="font-medium text-xs font-mono">{repostCount}</span>
+              <Heart className={`h-4 w-4 transition-colors ${isLiked ? 'fill-rose-500 text-rose-500' : 'group-hover/like:text-rose-500'}`} />
+              <span className="font-medium text-xs font-mono">{likesCount}</span>
             </button>
 
             {/* 3. Impressions (clicking opens main message) */}
@@ -524,38 +788,24 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               aria-label="View post"
             >
               <BarChart2 className="h-4 w-4 group-hover:text-sky-400 transition-colors" />
-              <span className="font-medium text-xs font-mono group-hover:text-sky-400 transition-colors">{formatTwitterMetric(impressions)}</span>
+              <span className="font-medium text-xs font-mono group-hover:text-sky-400 transition-colors">
+                {formatTwitterMetric(impressions)}
+              </span>
             </button>
 
-            {/* 4. Bookmark & Share */}
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const next = !isBookmarked;
-                  setIsBookmarked(next);
-                  banterService.toggleBookmark(post.id, next).catch(console.warn);
-                }}
-                className={`p-1.5 rounded-full hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer ${
-                  isBookmarked ? 'text-sky-400' : ''
-                }`}
-                title="Bookmark"
-              >
-                <Bookmark className="h-3.5 w-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleShareTake}
-                className="p-1.5 rounded-full hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer"
-                title="Share"
-                aria-label="Share"
-                data-testid="post-share-btn"
-              >
-                <Share className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            {/* 4. Favourite (Bookmark) */}
+            <button
+              type="button"
+              onClick={handleToggleBookmark}
+              className={`p-1.5 rounded-full hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer ${
+                isBookmarked ? 'text-amber-400' : 'text-zinc-500'
+              }`}
+              title={isBookmarked ? 'Remove Favourite' : 'Favourite'}
+              data-testid="post-bookmark-btn"
+              aria-label="Bookmark"
+            >
+              <Bookmark className={`h-4 w-4 transition-colors ${isBookmarked ? 'fill-amber-400 text-amber-400' : 'group-hover/bookmark:text-amber-400'}`} />
+            </button>
           </div>
         </div>
       </div>

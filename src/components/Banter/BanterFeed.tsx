@@ -41,9 +41,6 @@ export const BanterFeed: React.FC<BanterFeedProps> = ({
   emptyActionLabel = 'Post the first take',
   onEmptyAction,
 }) => {
-  const [freshCount, setFreshCount] = useState(0);
-  const seen = useRef(0);
-  const primed = useRef(false);
   const topRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -52,20 +49,6 @@ export const BanterFeed: React.FC<BanterFeedProps> = ({
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }
   }, []);
-
-  useEffect(() => {
-    if (!primed.current) {
-      if (posts.length > 0 || !isLoading) {
-        primed.current = true;
-        seen.current = posts.length;
-      }
-      return;
-    }
-    if (posts.length > seen.current) {
-      setFreshCount((n) => n + (posts.length - seen.current));
-      seen.current = posts.length;
-    }
-  }, [posts.length, isLoading]);
 
   if (isLoading && posts.length === 0) {
     return (
@@ -113,22 +96,6 @@ export const BanterFeed: React.FC<BanterFeedProps> = ({
     <PullToRefresh onRefresh={onRefresh || (async () => {})}>
       <div className="pt-0 pb-2">
         <div ref={topRef} />
-
-        {freshCount > 0 && (
-          <div className="sticky top-14 z-20 flex justify-center py-2">
-            <button
-              type="button"
-              onClick={() => {
-                setFreshCount(0);
-                topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-              className="rounded-full bg-[#1d9bf0] hover:bg-[#1a8cd8] px-4 py-1.5 text-xs font-bold text-white cursor-pointer shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
-            >
-              <span>↑</span>
-              <span>{freshCount} new {freshCount === 1 ? 'post' : 'posts'}</span>
-            </button>
-          </div>
-        )}
 
         <div className="border border-zinc-800/80 rounded-2xl bg-black overflow-hidden divide-y divide-zinc-800/70 shadow-lg">
           {posts.map((post, index) => (

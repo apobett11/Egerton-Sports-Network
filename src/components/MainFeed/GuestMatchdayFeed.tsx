@@ -547,6 +547,9 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
     const matchday = leagueMatches.find((match) => (match.league || '').toLowerCase().includes('premier'))?.matchday
       || leagueMatches.find((match) => match.matchday)?.matchday
       || info?.matchday;
+    if (formattedDateStr === '2026-11-28' || matchday === 17) {
+      return `TEDDY AJUOGA SUPER CUP • ${label}`;
+    }
     if (info?.isFriendly && !info?.isLeague) return `FRIENDLY • ${label}`;
     if (matchday) return `MATCHDAY ${matchday} • ${label}`;
     return label;

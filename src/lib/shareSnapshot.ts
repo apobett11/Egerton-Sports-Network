@@ -1,5 +1,6 @@
 import type { BanterPost } from '../types/predictions';
-import { getCleanMessageRef } from './predictions/utils';
+import { getCleanMessageRef, formatRelativeTime } from './predictions/utils';
+import { getAuthorIdentityMeta } from './predictions/footballAvatars';
 import { banterService } from '../services/predictions/banterService';
 
 export interface SnapshotRow {
@@ -501,12 +502,12 @@ function showPicture(
         <button type="button" data-close aria-label="Close" style="background:#152a40;color:#94a3b8;border:0;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">Close</button>
       </div>
 
-      <!-- High-res Template Image Preview (Clickable to view image) -->
-      <div style="margin:12px;background:#08121d;border:1px solid #20354b;border-radius:12px;overflow:hidden;box-shadow:0 12px 28px -4px rgba(0,0,0,0.5);">
-        <div style="position:relative;width:100%;max-height:460px;overflow-y:auto;background:#08121d;text-align:center;cursor:zoom-in;">
-          <img data-card data-testid="share-card-image" alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;max-height:460px;object-fit:contain;display:block;background:#0e1c2b;margin:0 auto;cursor:pointer;" />
-          <div style="position:absolute;top:10px;right:10px;background:rgba(14,28,43,0.9);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:800;color:#ff0046;letter-spacing:0.05em;pointer-events:none;">
-            CLICK TO VIEW IMAGE
+      <!-- High-res Template Image Preview (Clickable to open message) -->
+      <div style="margin:12px;background:#000000;border:1px solid #20354b;border-radius:12px;overflow:hidden;box-shadow:0 12px 28px -4px rgba(0,0,0,0.5);">
+        <div style="position:relative;width:100%;max-height:460px;overflow-y:auto;background:#000000;text-align:center;cursor:pointer;">
+          <img data-card data-testid="share-card-image" alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;max-height:460px;object-fit:contain;display:block;background:#000000;margin:0 auto;cursor:pointer;" />
+          <div style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:800;color:#38bdf8;letter-spacing:0.05em;pointer-events:none;">
+            CLICK TO OPEN MESSAGE
           </div>
         </div>
 
@@ -579,16 +580,21 @@ function showPicture(
   };
 
   const cardImg = root.querySelector('img[data-card]');
-  cardImg?.addEventListener('click', (e) => {
+  const handleOpenPostLink = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
-    showLightbox();
-  });
-  cardImg?.parentElement?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    showLightbox();
-  });
+    close();
+    if (typeof window !== 'undefined' && finalShareUrl) {
+      if (finalShareUrl.includes('#')) {
+        const targetHash = '#' + finalShareUrl.split('#')[1].replace(/^#+/, '');
+        window.location.hash = targetHash;
+      } else {
+        window.location.href = finalShareUrl;
+      }
+    }
+  };
+  cardImg?.addEventListener('click', handleOpenPostLink);
+  cardImg?.parentElement?.addEventListener('click', handleOpenPostLink);
 
   root.querySelector('[data-share-x]')?.addEventListener('click', () => {
     (window as any).__lastSharedTarget = 'x';
@@ -710,387 +716,316 @@ export function getShortBanterLink(postId: string): string {
   return `egerscore.com/b/${cleanId}`;
 }
 
+function drawChatIcon(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  roundBox(ctx, x, y, 13, 10, 3);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 3, y + 10);
+  ctx.lineTo(x + 1, y + 13);
+  ctx.lineTo(x + 6, y + 10);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawRetweetIcon(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 4);
+  ctx.lineTo(x + 11, y + 4);
+  ctx.lineTo(x + 9, y + 2);
+  ctx.moveTo(x + 12, y + 9);
+  ctx.lineTo(x + 3, y + 9);
+  ctx.lineTo(x + 5, y + 11);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawChartIcon(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.fillRect(x + 1, y + 7, 2, 6);
+  ctx.fillRect(x + 5, y + 2, 2, 11);
+  ctx.fillRect(x + 9, y + 5, 2, 8);
+  ctx.restore();
+}
+
+function drawBookmarkIcon(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 1);
+  ctx.lineTo(x + 10, y + 1);
+  ctx.lineTo(x + 10, y + 12);
+  ctx.lineTo(x + 6, y + 9);
+  ctx.lineTo(x + 2, y + 12);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawShareIcon(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 1, y + 5);
+  ctx.lineTo(x + 1, y + 11);
+  ctx.lineTo(x + 11, y + 11);
+  ctx.lineTo(x + 11, y + 5);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 6, y + 8);
+  ctx.lineTo(x + 6, y + 1);
+  ctx.lineTo(x + 3.5, y + 3.5);
+  ctx.moveTo(x + 6, y + 1);
+  ctx.lineTo(x + 8.5, y + 3.5);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function formatTwitterMetric(num: number): string {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+}
+
+async function loadHtmlImage(src?: string | null): Promise<HTMLImageElement | null> {
+  if (!src) return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+    setTimeout(() => resolve(null), 1500);
+  });
+}
+
 export async function renderBanterCardSnapshot(
   post: BanterPost,
-  parentPost?: BanterPost | null,
-  shortLinkText?: string
+  _parentPost?: BanterPost | null,
+  _shortLinkText?: string
 ): Promise<File> {
-  const shortLink = shortLinkText || getShortBanterLink(post.id);
+  const authorMeta = getAuthorIdentityMeta(post);
+  const name = authorMeta.displayName || post.authorName || post.authorHandle || 'Fanatic';
+  const cleanHandle = (post.authorHandle || authorMeta.authorHandle || 'fan').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const time = formatRelativeTime(post.createdAt);
+  const isTrending = Boolean(post.isTrending || (post as any).isHot || (post.reactionFireCount && post.reactionFireCount > 10));
+
+  let displayContent = post.content || '';
+  if (displayContent.includes('[poll:')) {
+    displayContent = displayContent.replace(/\[poll:[\s\S]*?\]/g, '').trim();
+  }
+  if (displayContent.includes('[media:')) {
+    displayContent = displayContent.replace(/\[media:(image|video):[^\]]+\]/g, '').trim();
+  }
+  if (!displayContent && post.poll) {
+    displayContent = post.poll.question;
+  }
+
+  const CARD_WIDTH = 480;
+  const padX = 16;
+  const padY = 14;
+  const avatarSize = 40;
+  const contentX = padX + avatarSize + 12;
+  const maxTextWidth = CARD_WIDTH - contentX - padX;
+
+  // Measure text lines
+  const measureCanvas = document.createElement('canvas');
+  const measureCtx = measureCanvas.getContext('2d')!;
+  measureCtx.font = '400 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  const lines = wrapLines(measureCtx, displayContent, maxTextWidth);
+
+  const textStartY = isTrending ? 66 : 42;
+  const lineHeight = 22;
+  const textBlockH = Math.max(22, lines.length * lineHeight);
+
+  const actionY = textStartY + textBlockH + 14;
+  const actionH = 18;
+  const totalH = actionY + actionH + padY;
+
+  // Render at 2x scale for maximum crispness
+  const SCALE = 2;
   const canvas = document.createElement('canvas');
-  canvas.width = WIDTH;
-  const tempCtx = canvas.getContext('2d');
-  if (!tempCtx) throw new Error('Could not draw the banter card.');
-
-  const calcCardHeight = (p: BanterPost, isReply: boolean): number => {
-    tempCtx.font = isReply ? '400 24px Arial, sans-serif' : '400 26px Arial, sans-serif';
-    const lines = wrapLines(tempCtx, p.content, (isReply ? WIDTH - 156 : WIDTH - 96) - 110).slice(0, 7);
-    const lineHeight = isReply ? 38 : 42;
-    const textH = lines.length * lineHeight;
-    let pollH = 0;
-    if (!isReply && p.poll && p.poll.options && p.poll.options.length > 0) {
-      pollH = 36 + p.poll.options.length * 48 + 12;
-    }
-    const contextH = p.matchContext || p.taggedTeamName ? 38 : 0;
-    const headerH = 80;
-    const metricsH = 76;
-    return headerH + contextH + textH + pollH + metricsH + 34;
-  };
-
-  const parentHeight = parentPost ? calcCardHeight(parentPost, false) : 0;
-  const targetHeight = calcCardHeight(post, Boolean(parentPost));
-  const connectorHeight = parentPost ? 36 : 0;
-  const headerHeight = 196;
-  const footerHeight = 124;
-  const paddingY = 48;
-  const totalHeight = Math.max(720, Math.min(1850, headerHeight + parentHeight + connectorHeight + targetHeight + footerHeight + paddingY));
-
-  canvas.height = totalHeight;
+  canvas.width = CARD_WIDTH * SCALE;
+  canvas.height = totalH * SCALE;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not draw the banter card.');
 
-  // Base background
-  ctx.fillStyle = '#081018';
-  ctx.fillRect(0, 0, WIDTH, totalHeight);
+  ctx.scale(SCALE, SCALE);
 
-  // 1. TOP SITE NAVIGATION BAR
-  ctx.fillStyle = '#ff0046';
-  ctx.fillRect(0, 0, WIDTH, 6);
-  ctx.fillStyle = '#0a1624';
-  ctx.fillRect(0, 6, WIDTH, 64);
-  ctx.fillStyle = '#1a2e45';
-  ctx.fillRect(0, 70, WIDTH, 1);
+  // Pure black background matching screenshot exactly
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, CARD_WIDTH, totalH);
 
-  // Site Logo & Tagline
-  ctx.fillStyle = '#ff0046';
-  ctx.font = '800 24px Arial, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('EGERSCORE', 48, 38);
+  // Load avatar image
+  let avatarImg: HTMLImageElement | null = null;
+  try {
+    avatarImg = await loadHtmlImage(authorMeta.avatarUrl);
+  } catch {}
 
-  ctx.fillStyle = '#64748b';
-  ctx.font = '700 16px Arial, sans-serif';
-  ctx.fillText('·  OFFICIAL EGERTON SPORTS NETWORK', 204, 38);
-
-  // Right pill badge
-  roundBox(ctx, WIDTH - 180, 22, 132, 32, 16);
-  ctx.fillStyle = 'rgba(255, 0, 70, 0.12)';
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 0, 70, 0.4)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.fillStyle = '#ff0046';
-  ctx.font = '800 12px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('CAMPUS TALK', WIDTH - 114, 38);
-
-  // 2. HERO CARD HEADER
-  ctx.fillStyle = '#0e1c2b';
-  ctx.fillRect(0, 71, WIDTH, 124);
-  ctx.fillStyle = '#1a2e45';
-  ctx.fillRect(0, 195, WIDTH, 1);
-
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = '900 36px Arial, sans-serif';
-  const mainTitle = parentPost
-    ? 'OFFICIAL DISCUSSION THREAD'
-    : post.isTrending
-      ? 'TRENDING BANTER & BUZZ'
-      : post.authorType === 'coach'
-        ? 'COACH OFFICIAL BRIEFING'
-        : 'CAMPUS BANTER & TAKES';
-  ctx.fillText(mainTitle, 48, 122);
-
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '700 16px Arial, sans-serif';
-  const subText = parentPost
-    ? 'REPLY THREAD · DIRECT FAN EXCHANGE'
-    : 'COMMUNITY PULSE · REAL-TIME FAN REACTIONS';
-  ctx.fillText(subText, 48, 160);
-
-  // Category Pill Badge
-  const badgeLabel = post.isTrending
-    ? 'TRENDING'
-    : post.authorType === 'coach'
-      ? `${post.taggedTeamName || 'COACH'}`
-      : 'FAN ZONE';
-  const badgeColor = post.isTrending ? '#f59e0b' : post.authorType === 'coach' ? '#10b981' : '#ff0046';
-  roundBox(ctx, WIDTH - 180, 114, 132, 36, 18);
-  ctx.fillStyle = post.isTrending ? 'rgba(245, 158, 11, 0.12)' : post.authorType === 'coach' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 0, 70, 0.12)';
-  ctx.fill();
-  ctx.strokeStyle = badgeColor;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.fillStyle = badgeColor;
-  ctx.font = '800 13px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(badgeLabel, WIDTH - 114, 132);
-
-  // Helper to draw a single card
-  const drawCard = (p: BanterPost, x: number, startY: number, width: number, isReply: boolean = false): number => {
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-
-    ctx.font = isReply ? '400 24px Arial, sans-serif' : '400 26px Arial, sans-serif';
-    const textMaxWidth = width - 110;
-    
-    let displayContent = p.content;
-    let votedTag: string | null = null;
-    const voteMatch = displayContent.match(/^\[Voted:\s*([^\]]+)\]\s*(.*)$/);
-    if (voteMatch) {
-      votedTag = `VOTED: ${voteMatch[1]}`;
-      displayContent = voteMatch[2];
-    }
-
-    const lines = wrapLines(ctx, displayContent, textMaxWidth).slice(0, 7);
-    const lineHeight = isReply ? 38 : 42;
-    const textBlockHeight = lines.length * lineHeight;
-
-    let pollHeight = 0;
-    if (!isReply && p.poll && p.poll.options && p.poll.options.length > 0) {
-      pollHeight = 36 + p.poll.options.length * 48 + 12;
-    }
-
-    const contextHeight = p.matchContext || p.taggedTeamName ? 38 : 0;
-    const headerHeight = 78;
-    const votedTagHeight = votedTag ? 42 : 0;
-    const metricsHeight = 72;
-    const cardHeight = headerHeight + contextHeight + votedTagHeight + textBlockHeight + pollHeight + metricsHeight + 30;
-
-    // Card background
-    roundBox(ctx, x, startY, width, cardHeight, 18);
-    ctx.fillStyle = isReply ? '#112236' : '#0e1c2b';
-    ctx.fill();
-    ctx.strokeStyle = isReply ? '#253f5d' : '#1e354e';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // User Avatar circle
-    const avatarX = x + 30;
-    const avatarY = startY + 24;
-    const avatarSize = 48;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.fillStyle = p.authorType === 'coach' ? '#059669' : p.authorType === 'journalist' ? '#0284c7' : '#2563eb';
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '800 20px Arial, sans-serif';
+  // 1. Draw circular avatar
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(padX + avatarSize / 2, padY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  if (avatarImg) {
+    ctx.drawImage(avatarImg, padX, padY, avatarSize, avatarSize);
+  } else {
+    const grad = ctx.createLinearGradient(padX, padY, padX + avatarSize, padY + avatarSize);
+    grad.addColorStop(0, '#0f291e');
+    grad.addColorStop(1, '#05120c');
+    ctx.fillStyle = grad;
+    ctx.fillRect(padX, padY, avatarSize, avatarSize);
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(initials(p.authorName || p.authorHandle), avatarX + avatarSize / 2, avatarY + avatarSize / 2 + 1);
-    ctx.restore();
+    ctx.fillText(initials(name), padX + avatarSize / 2, padY + avatarSize / 2);
+  }
+  ctx.restore();
 
-    // Author Name & Handle
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '800 22px Arial, sans-serif';
-    const nameStr = p.authorName || p.authorHandle;
-    ctx.fillText(fit(ctx, nameStr, 280), avatarX + avatarSize + 14, avatarY + 2);
+  // Subtle border around avatar
+  ctx.beginPath();
+  ctx.arc(padX + avatarSize / 2, padY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
-    const nameWidth = ctx.measureText(nameStr).width;
-    if (p.authorType === 'coach') {
-      roundBox(ctx, avatarX + avatarSize + 22 + nameWidth, avatarY + 2, 110, 24, 12);
-      ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
-      ctx.fill();
-      ctx.fillStyle = '#34d399';
-      ctx.font = '800 12px Arial, sans-serif';
-      ctx.fillText('COACH', avatarX + avatarSize + 40 + nameWidth, avatarY + 6);
-    } else if (p.authorType === 'journalist' || (p.authorBadge || '').toLowerCase().includes('journalist')) {
-      roundBox(ctx, avatarX + avatarSize + 22 + nameWidth, avatarY + 2, 120, 24, 12);
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
-      ctx.fill();
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = '800 12px Arial, sans-serif';
-      ctx.fillText('REPORTER', avatarX + avatarSize + 32 + nameWidth, avatarY + 6);
-    } else {
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = '800 16px Arial, sans-serif';
-      ctx.fillText('✓', avatarX + avatarSize + 20 + nameWidth, avatarY + 4);
-    }
+  // 2. Writer Header
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(name, contentX, padY + 2);
+  const nameWidth = ctx.measureText(name).width;
 
-    ctx.fillStyle = '#64748b';
-    ctx.font = '600 17px Arial, sans-serif';
-    const cleanH = `@${(p.authorHandle || 'fan').replace(/[^a-z0-9_]/gi, '_')}`;
-    ctx.fillText(`${cleanH} · ESN Fan`, avatarX + avatarSize + 14, avatarY + 28);
+  let currentHeaderX = contentX + nameWidth + 5;
 
-    let currentY = avatarY + avatarSize + 14;
-
-    // Match Context Badge & Tagged Team
-    if (p.matchContext || p.taggedTeamName) {
-      if (p.matchContext) {
-        roundBox(ctx, avatarX, currentY, 320, 30, 15);
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-        ctx.fill();
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = '700 13px Arial, sans-serif';
-        ctx.fillText(`⚽ ${p.matchContext.homeTeamName} vs ${p.matchContext.awayTeamName}`, avatarX + 12, currentY + 7);
-      }
-      if (p.taggedTeamName) {
-        const offsetLeft = p.matchContext ? 332 : 0;
-        roundBox(ctx, avatarX + offsetLeft, currentY, 180, 30, 15);
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
-        ctx.fill();
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = '#34d399';
-        ctx.font = '700 13px Arial, sans-serif';
-        ctx.fillText(`🛡️ @${p.taggedTeamName}`, avatarX + offsetLeft + 12, currentY + 7);
-      }
-      currentY += 38;
-    }
-
-    if (votedTag) {
-      roundBox(ctx, avatarX, currentY, 280, 32, 16);
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = '800 12px Arial, sans-serif';
-      ctx.fillText(`📊 ${votedTag}`, avatarX + 16, currentY + 8);
-      currentY += 42;
-    }
-
-    // Content text with rich hashtag styling
-    ctx.font = isReply ? '400 24px Arial, sans-serif' : '400 26px Arial, sans-serif';
-    lines.forEach((line) => {
-      let wordX = avatarX;
-      const words = line.split(' ');
-      words.forEach((word) => {
-        if (word.startsWith('#')) {
-          ctx.fillStyle = '#38bdf8';
-        } else if (word.startsWith('@')) {
-          ctx.fillStyle = '#34d399';
-        } else {
-          ctx.fillStyle = '#f1f5f9';
-        }
-        ctx.fillText(word, wordX, currentY);
-        wordX += ctx.measureText(word + ' ').width;
-      });
-      currentY += lineHeight;
-    });
-
-    // Poll section
-    if (!isReply && p.poll && p.poll.options && p.poll.options.length > 0) {
-      currentY += 8;
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = '800 18px Arial, sans-serif';
-      ctx.fillText(`📊 ${p.poll.question || 'Community Poll'}`, avatarX, currentY);
-      currentY += 28;
-
-      const totalV = p.poll.totalVotes || 0;
-      p.poll.options.forEach((opt) => {
-        const pct = totalV > 0 ? Math.round(((opt.votes || 0) / totalV) * 100) : 0;
-        roundBox(ctx, avatarX, currentY, width - 60, 40, 8);
-        ctx.fillStyle = '#162b42';
-        ctx.fill();
-
-        if (pct > 0) {
-          roundBox(ctx, avatarX, currentY, Math.max(8, ((width - 60) * pct) / 100), 40, 8);
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-          ctx.fill();
-        }
-
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = '700 16px Arial, sans-serif';
-        ctx.fillText(opt.text, avatarX + 16, currentY + 11);
-
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '800 16px Arial, sans-serif';
-        ctx.fillText(`${pct}%`, avatarX + width - 80, currentY + 11);
-        ctx.textAlign = 'left';
-
-        currentY += 48;
-      });
-    }
-
-    // Full Analytics & Metrics Row
-    currentY += 14;
-    ctx.fillStyle = isReply ? '#1a2e45' : '#162b42';
-    ctx.fillRect(x + 20, currentY, width - 40, 1.5);
-    currentY += 16;
-
-    const repCount = p.commentCount || p.repliesCount || 0;
-    const rCount = p.repostCount || p.repostsCount || 0;
-    const fireCount = p.reactionFireCount || p.likesCount || 0;
-    const clownCount = p.reactionClownCount || 0;
-    const skullCount = p.reactionSkullCount || 0;
-    const viewsCount = p.impressions || p.impressionsCount || (p.isTrending ? 1680 : 840);
-
-    ctx.font = '700 18px Arial, sans-serif';
-
-    const metrics: { icon: string; text: string; color: string }[] = [
-      { icon: '💬', text: `${repCount} Replies`, color: '#38bdf8' },
-      { icon: '🔁', text: `${rCount} Reposts`, color: '#34d399' },
-      { icon: '🔥', text: `${fireCount} Fire`, color: '#f59e0b' },
-      { icon: '🤡', text: `${clownCount} Clowns`, color: '#fbbf24' },
-      { icon: '💀', text: `${skullCount} Savage`, color: '#c084fc' },
-      { icon: '📊', text: `${viewsCount.toLocaleString()} Views`, color: '#94a3b8' },
-    ];
-
-    let metricX = avatarX;
-    metrics.forEach((m) => {
-      ctx.fillStyle = m.color;
-      ctx.fillText(`${m.icon} ${m.text}`, metricX, currentY);
-      metricX += 148;
-    });
-
-    return cardHeight;
-  };
-
-  if (parentPost) {
-    const parentH = drawCard(parentPost, 48, 226, WIDTH - 96, false);
-    const lineX = 100;
-    const lineStartY = 226 + parentH;
-    const lineEndY = lineStartY + 36;
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 4;
+  if (authorMeta.isJournalist) {
+    ctx.fillStyle = '#0095f6';
     ctx.beginPath();
-    ctx.moveTo(lineX, lineStartY);
-    ctx.lineTo(lineX, lineEndY);
+    ctx.arc(currentHeaderX + 7, padY + 10, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(currentHeaderX + 4.5, padY + 10);
+    ctx.lineTo(currentHeaderX + 6.5, padY + 12);
+    ctx.lineTo(currentHeaderX + 10, padY + 8);
     ctx.stroke();
-
-    drawCard(post, 108, lineEndY, WIDTH - 156, true);
-  } else {
-    drawCard(post, 48, 230, WIDTH - 96, false);
+    currentHeaderX += 17;
+  } else if (authorMeta.isCoach) {
+    ctx.fillStyle = authorMeta.coachLeague === 'championship' ? '#d97706' : '#ea580c';
+    ctx.beginPath();
+    ctx.arc(currentHeaderX + 7, padY + 10, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(currentHeaderX + 4.5, padY + 10);
+    ctx.lineTo(currentHeaderX + 6.5, padY + 12);
+    ctx.lineTo(currentHeaderX + 10, padY + 8);
+    ctx.stroke();
+    currentHeaderX += 17;
   }
 
-  // 3. BOTTOM BRAND & SHORT LINK FOOTER
-  const footerY = totalHeight - 120;
-  ctx.fillStyle = '#0a1522';
-  ctx.fillRect(0, footerY, WIDTH, 120);
-  ctx.fillStyle = '#1a2e45';
-  ctx.fillRect(0, footerY, WIDTH, 1.5);
+  ctx.font = 'normal 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#71767b';
+  ctx.fillText(`@${cleanHandle} · ${time}`, currentHeaderX, padY + 2.5);
 
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#64748b';
-  ctx.font = '700 16px Arial, sans-serif';
-  ctx.fillText('EGERSCORE · OFFICIAL CAMPUS SPORTS PLATFORM', 48, footerY + 40);
+  // 3. Trending Badge
+  if (isTrending) {
+    const pillY = padY + 24;
+    const pillW = 86;
+    const pillH = 19;
+    roundBox(ctx, contentX, pillY, pillW, pillH, 9.5);
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = '800 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔥 TRENDING', contentX + 6, pillY + pillH / 2);
+  }
 
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = '800 18px Arial, sans-serif';
-  ctx.fillText(fit(ctx, shortLink, WIDTH - 420), 48, footerY + 76);
+  // 4. Message Text Content
+  ctx.font = '400 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#f4f4f5';
+  ctx.textBaseline = 'top';
+  lines.forEach((line, i) => {
+    ctx.fillText(line, contentX, textStartY + i * lineHeight);
+  });
 
-  roundBox(ctx, WIDTH - 340, footerY + 34, 292, 52, 26);
-  ctx.fillStyle = '#ff0046';
-  ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '900 17px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('JOIN CONVERSATION →', WIDTH - 194, footerY + 66);
+  // 5. Actions Bar
+  const replyCount = post.commentCount ?? post.repliesCount ?? 0;
+  const repostCount = post.repostCount ?? post.repostsCount ?? 0;
+  const impressions = post.impressionsCount ?? post.impressions ?? 0;
 
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  const iconColor = '#71767b';
+  ctx.font = '400 12px monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  ctx.fillStyle = iconColor;
+  ctx.textBaseline = 'middle';
+
+  // 💬 Speech bubble
+  drawChatIcon(ctx, contentX, actionY, iconColor);
+  ctx.fillText(String(replyCount), contentX + 18, actionY + 7);
+
+  // 🔁 Retweet
+  const retweetX = contentX + 68;
+  drawRetweetIcon(ctx, retweetX, actionY, iconColor);
+  ctx.fillText(String(repostCount), retweetX + 18, actionY + 7);
+
+  // 📊 Chart
+  const chartX = contentX + 138;
+  drawChartIcon(ctx, chartX, actionY, iconColor);
+  ctx.fillText(formatTwitterMetric(impressions), chartX + 16, actionY + 7);
+
+  // 🔖 Bookmark
+  const bookmarkX = CARD_WIDTH - padX - 52;
+  drawBookmarkIcon(ctx, bookmarkX, actionY, iconColor);
+
+  // 📤 Share
+  const shareX = CARD_WIDTH - padX - 22;
+  drawShareIcon(ctx, shareX, actionY, iconColor);
+
+  let blob: Blob | null = null;
+  try {
+    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  } catch (err) {
+    console.warn('Canvas toBlob failed, retrying with fallback avatar:', err);
+    const safeGrad = ctx.createLinearGradient(padX, padY, padX + avatarSize, padY + avatarSize);
+    safeGrad.addColorStop(0, '#0f291e');
+    safeGrad.addColorStop(1, '#05120c');
+    ctx.fillStyle = safeGrad;
+    ctx.fillRect(padX, padY, avatarSize, avatarSize);
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initials(name), padX + avatarSize / 2, padY + avatarSize / 2);
+    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  }
+
   if (!blob) throw new Error('Could not save the banter card.');
-  return new File([blob], 'egerscore-banter.png', { type: 'image/png' });
+  return new File([blob], 'egerscore-message.png', { type: 'image/png' });
 }
 
 export async function shareBanterSnapshot(

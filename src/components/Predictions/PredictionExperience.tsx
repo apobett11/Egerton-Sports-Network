@@ -37,6 +37,7 @@ import { PredictionSlipFlow } from './Scores/PredictionSlipFlow';
 import { FavouriteTeamModal } from './Scores/FavouriteTeamModal';
 import { PredictionAnalyticsView } from './Analytics/PredictionAnalyticsView';
 import { MonetagPushNotifications, MonetagInPagePush } from '../ads/MonetagEngines';
+import { TeamDetailsContainer } from '../TeamDetails/TeamDetailsContainer';
 
 import { eplFixtureService } from '../../services/predictions/eplFixtureService';
 import { predictionService } from '../../services/predictions/predictionService';
@@ -350,7 +351,16 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     if (threadPostId) {
       setThreadPostId(null);
       sessionStorage.removeItem('active_banter_thread_id');
+      try {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('id');
+        cleanUrl.searchParams.delete('post');
+        cleanUrl.searchParams.delete('b');
+        cleanUrl.hash = '#/banter';
+        window.history.replaceState(null, '', cleanUrl.toString());
+      } catch {}
       window.location.hash = '#/banter';
+      setMainNav('news');
       return;
     }
 
@@ -401,6 +411,16 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       if (threadPostId) {
         setThreadPostId(null);
         sessionStorage.removeItem('active_banter_thread_id');
+        try {
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('id');
+          cleanUrl.searchParams.delete('post');
+          cleanUrl.searchParams.delete('b');
+          cleanUrl.hash = '#/banter';
+          window.history.replaceState(null, '', cleanUrl.toString());
+        } catch {}
+        window.location.hash = '#/banter';
+        setMainNav('news');
         return;
       }
       if (isComposeModalOpen) {
@@ -1492,9 +1512,18 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                         return p;
                       }));
                     }
+                    try {
+                      const cleanUrl = new URL(window.location.href);
+                      cleanUrl.searchParams.delete('id');
+                      cleanUrl.searchParams.delete('post');
+                      cleanUrl.searchParams.delete('b');
+                      cleanUrl.hash = '#/banter';
+                      window.history.replaceState(null, '', cleanUrl.toString());
+                    } catch {}
                     window.location.hash = '#/banter';
                     setThreadPostId(null);
                     sessionStorage.removeItem('active_banter_thread_id');
+                    setMainNav('news');
                   }}
                   onNavigatePost={(nextId) => {
                     const cleanRef = getCleanMessageRef(nextId);
@@ -1615,7 +1644,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           onSelectFilter={handleSelectFilter}
                           activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
                           onClearMatchContext={() => setContextMatch(null)}
-                          onBack={handleBackClick}
                         />
                       </div>
 

@@ -1,5 +1,4 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
 import type { BanterFilterType } from '../../types/predictions';
 
 interface BanterTabsProps {
@@ -23,23 +22,10 @@ export const BanterTabs: React.FC<BanterTabsProps> = ({
   onSelectFilter,
   activeMatchContextName,
   onClearMatchContext,
-  onBack,
 }) => {
   return (
     <div className="w-full border-b border-zinc-800/80 bg-black/90 backdrop-blur-md">
       <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar px-2">
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            className="shrink-0 p-2 mr-0.5 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
-            aria-label="Back"
-            title="Back"
-            data-testid="banter-tabs-back-button"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-        )}
         <div className="flex min-w-0 flex-1 items-stretch gap-1 sm:gap-2">
           {SORTS.map((sort) => {
             const isActive = activeFilter === sort.id;

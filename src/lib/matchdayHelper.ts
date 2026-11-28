@@ -188,13 +188,13 @@ export const DEFAULT_PLAYDAYS: PlaydayMark[] = [
   { date: '2026-10-18', matchday: 14, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 10 },
   { date: '2026-10-24', matchday: 15, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 11 },
   { date: '2026-10-25', matchday: 16, isFriendly: false, isLeague: true, isPlayed: true, totalMatches: 11, playedMatches: 9 },
-  { date: '2026-10-31', matchday: 17, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
-  { date: '2026-11-01', matchday: 18, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
-  { date: '2026-11-07', matchday: 19, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
-  { date: '2026-11-08', matchday: 20, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
-  { date: '2026-11-14', matchday: 21, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 6, playedMatches: 0 },
-  { date: '2026-11-15', matchday: 22, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 6, playedMatches: 0 },
-  { date: '2026-11-29', matchday: 23, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-11-28', matchday: 17, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-11-29', matchday: 18, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-12-05', matchday: 19, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-12-06', matchday: 20, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-12-12', matchday: 21, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 11, playedMatches: 0 },
+  { date: '2026-12-13', matchday: 22, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 6, playedMatches: 0 },
+  { date: '2026-12-19', matchday: 23, isFriendly: false, isLeague: true, isPlayed: false, totalMatches: 6, playedMatches: 0 },
 ];
 
 export function readPlaydayIndex(): PlaydayMark[] {

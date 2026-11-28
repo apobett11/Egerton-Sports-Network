@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests',
   testMatch: [
+    '**/banter-feed-surgical.spec.ts',
     '**/messaging_persistence_and_media.spec.ts',
     '**/thread_hierarchy_counters.spec.ts',
     '**/realtime_scoping_isolation.spec.ts',
